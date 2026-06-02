@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - name: Format check
+        run: yarn format:check
+      - name: Lint
+        run: yarn lint:check
+      - name: Typecheck
+        run: yarn typecheck
+      - name: Build
+        run: yarn build
+      - name: Publint
+        run: yarn publint

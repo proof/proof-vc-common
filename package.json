@@ -1,0 +1,74 @@
+{
+  "name": "@proof.com/proof-vc-common",
+  "version": "0.1.0",
+  "description": "A digital passport. Verified once, usable everywhere.",
+  "keywords": [
+    "VC",
+    "Verifiable Credentials",
+    "OID4VCI",
+    "OID4VCP",
+    "SD-JWT-VC",
+    "Selective Disclosures",
+    "Proof",
+    "Proof.com",
+    "OAuth"
+  ],
+  "homepage": "https://github.com/proof/proof-vc-common",
+  "bugs": "https://github.com/proof/proof-vc-common/issues",
+  "repository": "git@github.com:proof/proof-vc-common.git",
+  "license": "Apache-2.0",
+  "author": "Jeremie Charrier <jeremie.charrier@proof.com>",
+  "sideEffects": false,
+  "type": "module",
+  "exports": {
+    ".": {
+      "browser": {
+        "types": "./dist/index.browser.d.ts",
+        "default": "./dist/index.browser.js"
+      },
+      "node": {
+        "types": "./dist/index.node.d.ts",
+        "default": "./dist/index.node.js"
+      },
+      "default": {
+        "types": "./dist/index.node.d.ts",
+        "default": "./dist/index.node.js"
+      }
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "check-all": "yarn format && yarn lint && yarn typecheck && yarn publint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint . --fix",
+    "lint:check": "eslint .",
+    "publint": "publint --pack npm",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@owf/crypto": "^0.2.0",
+    "@owf/identity-common": "^0.2.0",
+    "@sd-jwt/core": "^0.19.0",
+    "@sd-jwt/sd-jwt-vc": "^0.19.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "eslint": "^10.4.0",
+    "eslint-plugin-unused-imports": "^4.4.1",
+    "prettier": "^3.8.3",
+    "prettier-plugin-packagejson": "^3.0.2",
+    "publint": "^0.3.21",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.59.4"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
