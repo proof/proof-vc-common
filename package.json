@@ -15,7 +15,10 @@
   ],
   "homepage": "https://github.com/proof/proof-vc-common",
   "bugs": "https://github.com/proof/proof-vc-common/issues",
-  "repository": "git@github.com:proof/proof-vc-common.git",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/proof/proof-vc-common.git"
+  },
   "license": "Apache-2.0",
   "author": "Jeremie Charrier <jeremie.charrier@proof.com>",
   "sideEffects": false,
