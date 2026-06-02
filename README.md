@@ -285,7 +285,7 @@ if (verifiableCredential.isOver18()) {
 }
 ```
 
-### Certificate Authority
+## Certificate Authority
 
 Proof's Verifiable Credentials are issued by our [Certificate Authority](https://www.proof.com/legal/certificate-policy)
 following the CA/B Forum Baseline Requirements for the Issuance and Management of Publicly-Trusted TLS Server Certificates published at https://www.cabforum.org.
@@ -295,11 +295,11 @@ is also committed in this repository [proof-root-ca-r1.crt](src/certificates/tru
 
 The sandbox Root CA R1 Development certificate is also committed in this repository [proof-root-ca-r1-development.crt](src/certificates/trust_store/proof_root_ca_r1_development.ts) and used when `environment: "sandbox"`.
 
-### Documentation
+## Documentation
 
 _Digital Credentials_ guides https://dev.proof.com/docs/digital-credentials-overview \
 _API Documentation_ https://dev.proof.com/reference/authorizeverifiablecredentialpresentation
 
-### Contributing
+## Contributing
 
 [Contribution guidelines for this project](CONTRIBUTING.md)
