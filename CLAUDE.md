@@ -40,25 +40,25 @@ grep -lE '(jose|@sd-jwt|@owf|node:)' \
 
 ## Essential Commands
 
-| Command            | Purpose                                                |
-| ------------------ | ------------------------------------------------------ |
-| `yarn check-all`   | Full check: format, lint, typecheck, publint           |
-| `yarn build`       | `tsc` emit to `dist/`                                  |
-| `yarn typecheck`   | `tsc --noEmit`                                         |
-| `yarn lint:check`  | eslint, no fix                                         |
-| `yarn lint`        | `eslint --fix`                                         |
-| `yarn format:check`| `prettier --check`                                     |
-| `yarn format`      | `prettier --write`                                     |
-| `yarn publint`     | `publint --pack npm` — do not change the flag          |
+| Command             | Purpose                                       |
+| ------------------- | --------------------------------------------- |
+| `yarn check-all`    | Full check: format, lint, typecheck, publint  |
+| `yarn build`        | `tsc` emit to `dist/`                         |
+| `yarn typecheck`    | `tsc --noEmit`                                |
+| `yarn lint:check`   | eslint, no fix                                |
+| `yarn lint`         | `eslint --fix`                                |
+| `yarn format:check` | `prettier --check`                            |
+| `yarn format`       | `prettier --write`                            |
+| `yarn publint`      | `publint --pack npm` — do not change the flag |
 
 ## Architecture
 
 ### Class hierarchy
 
-| Class                       | File                                | Role                                                                          |
-| --------------------------- | ----------------------------------- | ----------------------------------------------------------------------------- |
-| `VCPresentationClient`      | `src/presentation/base_client.ts`   | Browser-safe base. Authorization URL + PAR + transaction-data encoding.       |
-| `NodeVCPresentationClient`  | `src/presentation/node_client.ts`   | Extends base. Adds `verify` / `verifyVPToken`, owns the algorithm registry.   |
+| Class                      | File                              | Role                                                                        |
+| -------------------------- | --------------------------------- | --------------------------------------------------------------------------- |
+| `VCPresentationClient`     | `src/presentation/base_client.ts` | Browser-safe base. Authorization URL + PAR + transaction-data encoding.     |
+| `NodeVCPresentationClient` | `src/presentation/node_client.ts` | Extends base. Adds `verify` / `verifyVPToken`, owns the algorithm registry. |
 
 Each entry has its own module-level singleton: `vc_presentation.browser.ts`, `vc_presentation.node.ts`. `init()` builds the right class; subsequent calls delegate to it.
 
@@ -77,11 +77,11 @@ No `/openid-connect/jwks` lookup. Trust comes from the `x5c` chain validated aga
 
 ### Trust roots
 
-| File                                                              | Used by                                          |
-| ----------------------------------------------------------------- | ------------------------------------------------ |
-| `src/certificates/trust_store/proof_root_ca_r1.ts`                | `production`                                     |
-| `src/certificates/trust_store/proof_root_ca_r1_development.ts`    | `localhost`, `next`, `staging`, `sandbox`        |
-| `src/certificates/trust_store/index.ts`                           | Exports `getTrustRoot(env)`                      |
+| File                                                           | Used by                                   |
+| -------------------------------------------------------------- | ----------------------------------------- |
+| `src/certificates/trust_store/proof_root_ca_r1.ts`             | `production`                              |
+| `src/certificates/trust_store/proof_root_ca_r1_development.ts` | `localhost`, `next`, `staging`, `sandbox` |
+| `src/certificates/trust_store/index.ts`                        | Exports `getTrustRoot(env)`               |
 
 `.crt` source files coexist in the same directory as audit aids; only the `.ts` files ship.
 
