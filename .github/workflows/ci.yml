@@ -7,6 +7,39 @@ on:
     branches: [main]
 
 jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .node-version
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - run: yarn format:check
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .node-version
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - run: yarn lint:check
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .node-version
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - run: yarn typecheck
+
   build:
     runs-on: ubuntu-latest
     steps:
@@ -16,13 +49,16 @@ jobs:
           node-version-file: .node-version
           cache: yarn
       - run: yarn install --frozen-lockfile
-      - name: Format check
-        run: yarn format:check
-      - name: Lint
-        run: yarn lint:check
-      - name: Typecheck
-        run: yarn typecheck
-      - name: Build
-        run: yarn build
-      - name: Publint
-        run: yarn publint
+      - run: yarn build
+
+  publint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .node-version
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - run: yarn build
+      - run: yarn publint
