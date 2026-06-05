@@ -1,6 +1,7 @@
 import { X509Certificate } from "node:crypto";
 import { Buffer } from "node:buffer";
 import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
+import type { JwtPayload } from "@sd-jwt/types";
 import { ES256, ES384, ES512, hasher } from "@owf/crypto";
 import { base64urlDecode } from "@owf/identity-common";
 
@@ -34,6 +35,24 @@ function isSupportedAlg(s: unknown): s is SupportedAlg {
   return typeof s === "string" && s in VERIFIERS;
 }
 
+function kbVerifierFor(kbAlg: SupportedAlg) {
+  return async (
+    data: string,
+    sig: string,
+    payload: JwtPayload,
+  ): Promise<boolean> => {
+    const cnfJwk = payload.cnf?.jwk;
+    if (cnfJwk === undefined) {
+      throw "SD-JWT-VC is missing cnf.jwk — cannot verify KB JWT";
+    }
+    if (cnfJwk.crv !== EXPECTED_CURVE[kbAlg]) {
+      throw `cnf.jwk curve ${cnfJwk.crv} does not match KB JWT alg ${kbAlg}`;
+    }
+    const verifier = await VERIFIERS[kbAlg].getVerifier(cnfJwk);
+    return verifier(data, sig);
+  };
+}
+
 export class NodeVCPresentationClient extends VCPresentationClient {
   public async verify({
     encodedSDJWT,
@@ -50,6 +69,18 @@ export class NodeVCPresentationClient extends VCPresentationClient {
       throw "JWT header x5c is missing or empty";
     }
 
+    let kbVerifier = null;
+    const kbAlg = decoded.kbJwt?.header?.alg;
+    if (decoded.kbJwt !== undefined) {
+      if (nonce === undefined) {
+        throw "SD-JWT-VC contains a KB JWT but no nonce was supplied for verification";
+      }
+      if (!isSupportedAlg(kbAlg)) {
+        throw `Unsupported or missing KB JWT alg: ${kbAlg}`;
+      }
+      kbVerifier = kbVerifierFor(kbAlg);
+    }
+
     const chain = x5c.map(
       (b64) => new X509Certificate(Buffer.from(b64 as string, "base64")),
     );
@@ -61,8 +92,14 @@ export class NodeVCPresentationClient extends VCPresentationClient {
     }
 
     const verifier = await VERIFIERS[alg].getVerifier(leafJwk);
-    const SDJWTClient = new SDJwtVcInstance({ hasher, verifier });
-    await SDJWTClient.verify(encodedSDJWT, { nonce });
+    const SDJWTClient = new SDJwtVcInstance({
+      hasher,
+      verifier,
+      ...(kbVerifier !== null && { kbVerifier }),
+    });
+    await SDJWTClient.verify(encodedSDJWT, {
+      ...(nonce !== undefined ? { keyBindingNonce: nonce } : {}),
+    });
 
     return getProofCredential(decoded);
   }
