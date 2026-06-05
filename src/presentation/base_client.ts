@@ -62,20 +62,9 @@ export class VCPresentationClient {
   public async getAuthorizationRequestURL(
     params: AuthorizationRequestParams,
   ): Promise<string> {
-    const url = this.buildAuthorizationRequestURL(params);
-
-    if (this.use_pushed_authorization_request) {
-      const response = await fetch(url, { method: "post" });
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw `${data["error"]}: ${data["error_description"]}`;
-      } else {
-        return data["request_uri"];
-      }
-    } else {
-      return url;
-    }
+    return this.use_pushed_authorization_request
+      ? this.pushAuthorizationRequest(params)
+      : this.buildAuthorizeURL(params);
   }
 
   protected baseURL(): string {
@@ -93,22 +82,51 @@ export class VCPresentationClient {
     }
   }
 
-  private buildAuthorizationRequestURL({
+  private buildAuthorizeURL(params: AuthorizationRequestParams): string {
+    const url = new URL(`${this.oid4vp_uri}/authorize`, this.baseURL());
+    url.search = this.buildParameters(params).toString();
+    return url.toString();
+  }
+
+  private async pushAuthorizationRequest(
+    params: AuthorizationRequestParams,
+  ): Promise<string> {
+    const parURL = new URL(`${this.oid4vp_uri}/par`, this.baseURL()).toString();
+    const response = await fetch(parURL, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: this.buildParameters(params).toString(),
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw `${data["error"]}: ${data["error_description"]}`;
+    }
+
+    const authorizeURL = new URL(
+      `${this.oid4vp_uri}/authorize`,
+      this.baseURL(),
+    );
+    authorizeURL.search = new URLSearchParams({
+      client_id: this.client_id,
+      request_uri: data["request_uri"],
+    }).toString();
+
+    return authorizeURL.toString();
+  }
+
+  private buildParameters({
     scope,
     nonce,
     state,
     login_hint,
     transaction_data,
-  }: AuthorizationRequestParams): string {
-    const baseURL = this.baseURL();
-    const endpoint = this.use_pushed_authorization_request
-      ? "/par"
-      : "/authorize";
+  }: AuthorizationRequestParams): URLSearchParams {
     const encodedTransactionData =
       typeof transaction_data === "object"
         ? encodeTransactionData(transaction_data)
         : transaction_data;
-    const params = new URLSearchParams({
+    return new URLSearchParams({
       ...this.defaultAuthorizationRequestParameters(),
       scope,
       nonce,
@@ -118,11 +136,6 @@ export class VCPresentationClient {
         transaction_data: encodedTransactionData,
       }),
     });
-
-    return new URL(
-      `${this.oid4vp_uri}${endpoint}?${params}`,
-      baseURL,
-    ).toString();
   }
 
   private defaultAuthorizationRequestParameters() {
