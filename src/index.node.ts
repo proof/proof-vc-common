@@ -14,6 +14,8 @@ export type {
 
 export { TX_DATA_TYPE, transactionData } from "./transaction_data.ts";
 
+export { ProofCredentialV1 } from "./proof_credentials.ts";
+
 export {
   init,
   getAuthorizationRequestURL,
