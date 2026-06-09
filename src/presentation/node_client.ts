@@ -15,11 +15,13 @@ import { VCPresentationClient } from "./base_client.ts";
 export type VerifyParams = {
   encodedSDJWT: string;
   nonce?: string;
+  aud?: string;
 };
 
 export type VerifyVPTokenParams = {
   encodedVPToken: string;
   nonce?: string;
+  aud?: string;
 };
 
 const VERIFIERS = { ES256, ES384, ES512 } as const;
@@ -57,6 +59,7 @@ export class NodeVCPresentationClient extends VCPresentationClient {
   public async verify({
     encodedSDJWT,
     nonce,
+    aud,
   }: VerifyParams): Promise<ProofCredential> {
     const decoded = await new SDJwtVcInstance({ hasher }).decode(encodedSDJWT);
     const alg = decoded.jwt?.header?.["alg"];
@@ -78,7 +81,12 @@ export class NodeVCPresentationClient extends VCPresentationClient {
       if (!isSupportedAlg(kbAlg)) {
         throw `Unsupported or missing KB JWT alg: ${kbAlg}`;
       }
+      if (aud !== undefined && decoded.kbJwt.payload?.aud !== aud) {
+        throw `KB JWT aud ${decoded.kbJwt.payload?.aud} does not match expected aud ${aud}`;
+      }
       kbVerifier = kbVerifierFor(kbAlg);
+    } else if (aud !== undefined) {
+      throw "aud was supplied for verification but the SD-JWT-VC contains no KB JWT";
     }
 
     const chain = x5c.map(
@@ -107,6 +115,7 @@ export class NodeVCPresentationClient extends VCPresentationClient {
   public async verifyVPToken({
     encodedVPToken,
     nonce,
+    aud,
   }: VerifyVPTokenParams): Promise<VPToken> {
     const records = JSON.parse(base64urlDecode(encodedVPToken)) as Record<
       string,
@@ -121,6 +130,7 @@ export class NodeVCPresentationClient extends VCPresentationClient {
         const credential = await this.verify({
           encodedSDJWT,
           ...(nonce !== undefined && { nonce }),
+          ...(aud !== undefined && { aud }),
         });
         vpToken[credentialId].push(credential);
       }
