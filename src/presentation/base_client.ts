@@ -9,62 +9,66 @@ import {
   type TransactionData,
 } from "../transaction_data.ts";
 
-export type VCPresentationClientParams = {
+export type BrowserInitParams = {
   environment: Environment;
-  client_id: string;
-  client_secret?: string;
-  use_pushed_authorization_request?: boolean;
-  response_mode?: ResponseMode;
-  callback_uri: string;
+  clientId: string;
+  callbackUri: string;
+  responseMode?: ResponseMode;
 };
 
 export type AuthorizationRequestParams = {
   scope: Scope;
   nonce: string;
   state?: string;
-  login_hint?: string;
-  transaction_data?: TransactionData | string;
+  loginHint?: string;
+  transactionData?: TransactionData | string;
 };
 
 export class VCPresentationClient {
-  protected readonly environment: Environment;
-  protected readonly client_id: string;
-  protected readonly client_secret?: string;
-  protected readonly use_pushed_authorization_request: boolean = false;
-  protected readonly response_mode: ResponseMode = "fragment";
-  protected readonly response_type: ResponseType = "vp_token";
-  protected readonly callback_uri: string;
-  protected readonly oid4vp_uri = "/verifiable-credentials/v1/presentation";
+  protected readonly environment?: Environment;
+  protected readonly clientId?: string;
+  protected readonly responseMode: ResponseMode = "fragment";
+  protected readonly responseType: ResponseType = "vp_token";
+  protected readonly callbackUri?: string;
+  protected readonly oid4vpUri = "/verifiable-credentials/v1/presentation";
 
-  constructor({
-    environment,
-    client_id,
-    client_secret,
-    use_pushed_authorization_request,
-    response_mode,
-    callback_uri,
-  }: VCPresentationClientParams) {
-    this.environment = environment;
-    this.client_id = client_id;
-    this.callback_uri = callback_uri;
-
-    if (client_secret !== undefined) {
-      this.client_secret = client_secret;
+  constructor(params: {
+    environment?: Environment;
+    clientId?: string;
+    responseMode?: ResponseMode;
+    callbackUri?: string;
+  }) {
+    if (params.environment !== undefined) {
+      this.environment = params.environment;
     }
-    if (use_pushed_authorization_request !== undefined) {
-      this.use_pushed_authorization_request = use_pushed_authorization_request;
+    if (params.clientId !== undefined) {
+      this.clientId = params.clientId;
     }
-    if (response_mode !== undefined) {
-      this.response_mode = response_mode;
+    if (params.callbackUri !== undefined) {
+      this.callbackUri = params.callbackUri;
+    }
+    if (params.responseMode !== undefined) {
+      this.responseMode = params.responseMode;
     }
   }
 
   public async getAuthorizationRequestURL(
     params: AuthorizationRequestParams,
   ): Promise<string> {
-    return this.use_pushed_authorization_request
-      ? this.pushAuthorizationRequest(params)
-      : this.buildAuthorizeURL(params);
+    this.requireRequestConfig();
+    return this.buildAuthorizeURL(params);
+  }
+
+  protected requireRequestConfig(): void {
+    if (this.environment === undefined) {
+      throw "getAuthorizationRequestURL requires `environment` in init()";
+    }
+    if (this.clientId === undefined) {
+      throw "getAuthorizationRequestURL requires `clientId` in init()";
+    }
+    if (this.callbackUri === undefined) {
+      throw "getAuthorizationRequestURL requires `callbackUri` in init()";
+    }
   }
 
   protected baseURL(): string {
@@ -79,78 +83,50 @@ export class VCPresentationClient {
         return "https://api.fairfax.proof.com";
       case "production":
         return "https://api.proof.com";
+      default:
+        throw "getAuthorizationRequestURL requires `environment` in init()";
     }
   }
 
-  private buildAuthorizeURL(params: AuthorizationRequestParams): string {
-    const url = new URL(`${this.oid4vp_uri}/authorize`, this.baseURL());
+  protected buildAuthorizeURL(params: AuthorizationRequestParams): string {
+    const url = new URL(`${this.oid4vpUri}/authorize`, this.baseURL());
     url.search = this.buildParameters(params).toString();
     return url.toString();
   }
 
-  private async pushAuthorizationRequest(
-    params: AuthorizationRequestParams,
-  ): Promise<string> {
-    const parURL = new URL(`${this.oid4vp_uri}/par`, this.baseURL()).toString();
-    const response = await fetch(parURL, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: this.buildParameters(params).toString(),
-    });
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw `${data["error"]}: ${data["error_description"]}`;
-    }
-
-    const authorizeURL = new URL(
-      `${this.oid4vp_uri}/authorize`,
-      this.baseURL(),
-    );
-    authorizeURL.search = new URLSearchParams({
-      client_id: this.client_id,
-      request_uri: data["request_uri"],
-    }).toString();
-
-    return authorizeURL.toString();
-  }
-
-  private buildParameters({
+  protected buildParameters({
     scope,
     nonce,
     state,
-    login_hint,
-    transaction_data,
+    loginHint,
+    transactionData,
   }: AuthorizationRequestParams): URLSearchParams {
     const encodedTransactionData =
-      typeof transaction_data === "object"
-        ? encodeTransactionData(transaction_data)
-        : transaction_data;
+      typeof transactionData === "object"
+        ? encodeTransactionData(transactionData)
+        : transactionData;
     return new URLSearchParams({
       ...this.defaultAuthorizationRequestParameters(),
       scope,
       nonce,
       ...(state !== undefined && { state }),
-      ...(login_hint !== undefined && { login_hint }),
+      ...(loginHint !== undefined && { login_hint: loginHint }),
       ...(encodedTransactionData !== undefined && {
         transaction_data: encodedTransactionData,
       }),
     });
   }
 
-  private defaultAuthorizationRequestParameters() {
+  protected defaultAuthorizationRequestParameters(): Record<string, string> {
     return {
-      client_id: this.client_id,
-      ...(this.client_secret !== undefined && {
-        client_secret: this.client_secret,
+      client_id: this.clientId!,
+      response_mode: this.responseMode,
+      response_type: this.responseType,
+      ...(this.responseMode === "fragment" && {
+        redirect_uri: this.callbackUri!,
       }),
-      response_mode: this.response_mode,
-      response_type: this.response_type,
-      ...(this.response_mode === "fragment" && {
-        redirect_uri: this.callback_uri,
-      }),
-      ...(this.response_mode === "direct_post" && {
-        response_uri: this.callback_uri,
+      ...(this.responseMode === "direct_post" && {
+        response_uri: this.callbackUri!,
       }),
     };
   }

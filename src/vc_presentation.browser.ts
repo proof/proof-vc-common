@@ -1,14 +1,14 @@
 import {
   VCPresentationClient,
-  type VCPresentationClientParams,
+  type BrowserInitParams,
   type AuthorizationRequestParams,
 } from "./presentation/base_client.ts";
 
 let instance: VCPresentationClient | null = null;
 
-export function init(params: VCPresentationClientParams): void {
+export function init(params: BrowserInitParams): void {
   if (params.environment === "production" && instance)
-    throw new Error("VCPresentationClient already initialized (browser)");
+    throw "VCPresentationClient already initialized (browser)";
   instance = new VCPresentationClient(params);
 }
 

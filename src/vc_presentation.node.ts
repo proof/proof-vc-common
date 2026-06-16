@@ -1,9 +1,7 @@
-import type {
-  VCPresentationClientParams,
-  AuthorizationRequestParams,
-} from "./presentation/base_client.ts";
+import type { AuthorizationRequestParams } from "./presentation/base_client.ts";
 import {
   NodeVCPresentationClient,
+  type NodeInitParams,
   type VerifyParams,
   type VerifyVPTokenParams,
 } from "./presentation/node_client.ts";
@@ -11,9 +9,9 @@ import type { ProofCredential, VPToken } from "./types.ts";
 
 let instance: NodeVCPresentationClient | null = null;
 
-export function init(params: VCPresentationClientParams): void {
+export function init(params: NodeInitParams): void {
   if (params.environment === "production" && instance)
-    throw new Error("NodeVCPresentationClient already initialized (node)");
+    throw "NodeVCPresentationClient already initialized (node)";
   instance = new NodeVCPresentationClient(params);
 }
 

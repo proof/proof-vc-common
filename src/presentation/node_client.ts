@@ -5,12 +5,31 @@ import type { JwtPayload } from "@sd-jwt/types";
 import { ES256, ES384, ES512, hasher } from "@owf/crypto";
 import { base64urlDecode } from "@owf/identity-common";
 
-import type { ProofCredential, VPToken } from "../types.ts";
+import type {
+  Environment,
+  ProofCredential,
+  ResponseMode,
+  TrustRoot,
+  VPToken,
+} from "../types.ts";
 import { credentialIdAsType } from "../utils.ts";
 import { getProofCredential } from "../proof_credential_factory.ts";
 import { verifyChain } from "../certificates/chain_validator.ts";
 import { getTrustRoot } from "../certificates/trust_store/index.ts";
-import { VCPresentationClient } from "./base_client.ts";
+import {
+  VCPresentationClient,
+  type AuthorizationRequestParams,
+} from "./base_client.ts";
+
+export type NodeInitParams = {
+  trustRoot?: TrustRoot;
+  environment?: Environment;
+  clientId?: string;
+  clientSecret?: string;
+  callbackUri?: string;
+  responseMode?: ResponseMode;
+  usePushedAuthorizationRequest?: boolean;
+};
 
 export type VerifyParams = {
   encodedSDJWT: string;
@@ -56,6 +75,78 @@ function kbVerifierFor(kbAlg: SupportedAlg) {
 }
 
 export class NodeVCPresentationClient extends VCPresentationClient {
+  protected readonly clientSecret?: string;
+  protected readonly usePushedAuthorizationRequest: boolean = false;
+  protected readonly trustRoot?: TrustRoot;
+
+  constructor(params: NodeInitParams) {
+    super(params);
+    if (params.clientSecret !== undefined) {
+      this.clientSecret = params.clientSecret;
+    }
+    if (params.usePushedAuthorizationRequest !== undefined) {
+      this.usePushedAuthorizationRequest = params.usePushedAuthorizationRequest;
+    }
+    if (params.trustRoot !== undefined) {
+      this.trustRoot = params.trustRoot;
+    }
+  }
+
+  public override async getAuthorizationRequestURL(
+    params: AuthorizationRequestParams,
+  ): Promise<string> {
+    this.requireRequestConfig();
+    return this.usePushedAuthorizationRequest
+      ? this.pushAuthorizationRequest(params)
+      : this.buildAuthorizeURL(params);
+  }
+
+  protected override defaultAuthorizationRequestParameters(): Record<
+    string,
+    string
+  > {
+    return {
+      ...super.defaultAuthorizationRequestParameters(),
+      ...(this.clientSecret !== undefined && {
+        client_secret: this.clientSecret,
+      }),
+    };
+  }
+
+  protected async pushAuthorizationRequest(
+    params: AuthorizationRequestParams,
+  ): Promise<string> {
+    if (this.clientSecret === undefined) {
+      throw "pushed authorization requests require `clientSecret` in init()";
+    }
+    const parURL = new URL(`${this.oid4vpUri}/par`, this.baseURL()).toString();
+    const response = await fetch(parURL, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: this.buildParameters(params).toString(),
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw `${data["error"]}: ${data["error_description"]}`;
+    }
+
+    const authorizeURL = new URL(`${this.oid4vpUri}/authorize`, this.baseURL());
+    authorizeURL.search = new URLSearchParams({
+      client_id: this.clientId!,
+      request_uri: data["request_uri"],
+    }).toString();
+
+    return authorizeURL.toString();
+  }
+
+  protected requireTrustRoot(): TrustRoot {
+    if (this.trustRoot === undefined) {
+      throw "verify requires `trustRoot` in init()";
+    }
+    return this.trustRoot;
+  }
+
   public async verify({
     encodedSDJWT,
     nonce,
@@ -92,7 +183,7 @@ export class NodeVCPresentationClient extends VCPresentationClient {
     const chain = x5c.map(
       (b64) => new X509Certificate(Buffer.from(b64 as string, "base64")),
     );
-    verifyChain(chain, getTrustRoot(this.environment));
+    verifyChain(chain, getTrustRoot(this.requireTrustRoot()));
 
     const leafJwk = chain[0]!.publicKey.export({ format: "jwk" });
     if (leafJwk.crv !== EXPECTED_CURVE[alg]) {

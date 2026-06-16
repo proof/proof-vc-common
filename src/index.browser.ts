@@ -14,4 +14,9 @@ export type {
 
 export { TX_DATA_TYPE, transactionData } from "./transaction_data.ts";
 
+export type {
+  BrowserInitParams,
+  AuthorizationRequestParams,
+} from "./presentation/base_client.ts";
+
 export { init, getAuthorizationRequestURL } from "./vc_presentation.browser.ts";
