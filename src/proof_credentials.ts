@@ -39,21 +39,21 @@ type ProofCredentialV1Params = {
 } & CredentialParams;
 
 export class ProofCredentialV1 extends Credential {
-  private readonly given_name: string | undefined;
-  private readonly family_name: string | undefined;
+  public readonly givenName: string | undefined;
+  public readonly familyName: string | undefined;
+  public readonly isOver18: boolean | undefined;
+  public readonly isOver21: boolean | undefined;
+  public readonly isOver65: boolean | undefined;
   private readonly birth_date: string | undefined;
-  private readonly is_over_18: boolean | undefined;
-  private readonly is_over_21: boolean | undefined;
-  private readonly is_over_65: boolean | undefined;
 
   constructor(params: ProofCredentialV1Params) {
     super(params);
-    this.given_name = params.given_name;
-    this.family_name = params.family_name;
+    this.givenName = params.given_name;
+    this.familyName = params.family_name;
     this.birth_date = params.birth_date;
-    this.is_over_18 = params.is_over_18;
-    this.is_over_21 = params.is_over_21;
-    this.is_over_65 = params.is_over_65;
+    this.isOver18 = params.is_over_18;
+    this.isOver21 = params.is_over_21;
+    this.isOver65 = params.is_over_65;
   }
 
   public credentialType(): CredentialType {
@@ -64,31 +64,9 @@ export class ProofCredentialV1 extends Credential {
     return "dc+sd-jwt";
   }
 
-  public givenName(): string | undefined {
-    return this.given_name;
-  }
-
-  public familyName(): string | undefined {
-    return this.family_name;
-  }
-
-  public dateOfBirth(): Date | undefined {
-    if (this.birth_date !== undefined) {
-      return new Date(this.birth_date);
-    } else {
-      return undefined;
-    }
-  }
-
-  public isOver18(): boolean | undefined {
-    return this.is_over_18;
-  }
-
-  public isOver21(): boolean | undefined {
-    return this.is_over_21;
-  }
-
-  public isOver65(): boolean | undefined {
-    return this.is_over_65;
+  public get dateOfBirth(): Date | undefined {
+    return this.birth_date !== undefined
+      ? new Date(this.birth_date)
+      : undefined;
   }
 }

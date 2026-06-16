@@ -16,6 +16,13 @@ export { TX_DATA_TYPE, transactionData } from "./transaction_data.ts";
 
 export { ProofCredentialV1 } from "./proof_credentials.ts";
 
+export type { AuthorizationRequestParams } from "./presentation/base_client.ts";
+export type {
+  NodeInitParams,
+  VerifyParams,
+  VerifyVPTokenParams,
+} from "./presentation/node_client.ts";
+
 export {
   init,
   getAuthorizationRequestURL,

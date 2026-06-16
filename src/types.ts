@@ -6,6 +6,7 @@ export type Environment =
   | "staging"
   | "sandbox"
   | "production";
+export type TrustRoot = "development" | "production";
 export type ResponseMode = "fragment" | "direct_post";
 export type ResponseType = "vp_token";
 export type Scope = "urn:proof:params:scope:verifiable-credentials:basic";

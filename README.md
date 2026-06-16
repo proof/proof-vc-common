@@ -42,9 +42,9 @@ import { init } from "@proof.com/proof-vc-common";
 
 init({
   environment: "sandbox",
-  client_id: "verifier-demo",
-  response_mode: "direct_post",
-  callback_uri: "http://localhost/verify_vp_token",
+  clientId: "verifier-demo",
+  responseMode: "direct_post",
+  callbackUri: "http://localhost/verify_vp_token",
 });
 ```
 
@@ -54,7 +54,7 @@ Proof supports `fragment` and `direct_post` response modes.
 
 #### fragment
 
-Using `fragment` the `vp_token` is returned as a fragment of the `callback_uri` when the user is 302 redirected from Proof to your website.
+Using `fragment` the `vp_token` is returned as a fragment of the `callbackUri` when the user is 302 redirected from Proof to your website.
 
 ```
 GET http://localhost/verify_vp_token#vp_token=eyJwcm9vZl9pZF9...
@@ -62,7 +62,7 @@ GET http://localhost/verify_vp_token#vp_token=eyJwcm9vZl9pZF9...
 
 #### direct_post
 
-Using `direct_post` the `vp_token` is returned in the JSON body of a POST request to the `callback_uri` from Proof to your website. See the [OID4VP specification](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#name-response-mode-direct_post) for more details.
+Using `direct_post` the `vp_token` is returned in the JSON body of a POST request to the `callbackUri` from Proof to your website. See the [OID4VP specification](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#name-response-mode-direct_post) for more details.
 
 ```
 POST http://localhost/verify_vp_token
@@ -73,14 +73,16 @@ POST http://localhost/verify_vp_token
 
 Proof supports [Pushed Authorization Requests](https://datatracker.ietf.org/doc/html/rfc9126) (PAR).
 You may want to use this feature when using [Transaction Templates](#transaction-templates) to avoid hitting URL size limits.
+Note that PAR is available **only from the Node.js distribution**.
 
 ```javascript
 init({
   environment: "sandbox",
-  client_id: "caxdw5a7d",
-  response_mode: "direct_post",
-  callback_uri: "http://localhost/verify_vp_token",
-  use_pushed_authorization_request: true,
+  clientId: "caxdw5a7d",
+  clientSecret: "…",
+  responseMode: "direct_post",
+  callbackUri: "http://localhost/verify_vp_token",
+  usePushedAuthorizationRequest: true,
 });
 ```
 
@@ -110,11 +112,11 @@ Request a Verifiable Credential Presentation with an [OAuth 2.0](https://datatra
 ```javascript
 import { getAuthorizationRequestURL } from "@proof.com/proof-vc-common";
 
-const redirect = getAuthorizationRequestURL({
+const redirect = await getAuthorizationRequestURL({
   nonce: "3e8e4918-e9fb-453a-a538-81152be15c1b",
   scope: "urn:proof:params:scope:verifiable-credentials:basic",
   state: "6A2B4CD830",
-  login_hint: "frodo.baggins@theshire",
+  loginHint: "frodo.baggins@theshire",
 });
 
 window.location.href = redirect;
@@ -162,12 +164,12 @@ const data = transactionData.wireInstructions({
   currency: "USD",
   memo: "Invoice #2024-089",
 });
-const redirect = getAuthorizationRequestURL({
+const redirect = await getAuthorizationRequestURL({
   nonce: "3e8e4918-e9fb-453a-a538-81152be15c1b",
   scope: "urn:proof:params:scope:verifiable-credentials:basic",
   state: "6A2B4CD830",
-  login_hint: "frodo.baggins@theshire",
-  transaction_data: data,
+  loginHint: "frodo.baggins@theshire",
+  transactionData: data,
 });
 ```
 
@@ -190,12 +192,12 @@ const data = transactionData.paymentItemized({
     { quantity: 2, unit_cost: 11.4, label: "Fees" },
   ],
 });
-const redirect = getAuthorizationRequestURL({
+const redirect = await getAuthorizationRequestURL({
   nonce: "3e8e4918-e9fb-453a-a538-81152be15c1b",
   scope: "urn:proof:params:scope:verifiable-credentials:basic",
   state: "6A2B4CD830",
-  login_hint: "frodo.baggins@theshire",
-  transaction_data: data,
+  loginHint: "frodo.baggins@theshire",
+  transactionData: data,
 });
 ```
 
@@ -225,12 +227,12 @@ const data = transactionData.paymentMandate({
   amount: 500,
   currency: "USD",
 });
-const redirect = getAuthorizationRequestURL({
+const redirect = await getAuthorizationRequestURL({
   nonce: "3e8e4918-e9fb-453a-a538-81152be15c1b",
   scope: "urn:proof:params:scope:verifiable-credentials:basic",
   state: "6A2B4CD830",
-  login_hint: "frodo.baggins@theshire",
-  transaction_data: data,
+  loginHint: "frodo.baggins@theshire",
+  transactionData: data,
 });
 ```
 
@@ -241,20 +243,16 @@ Decode and verify a Verifiable Presentation's `vp_token` server-side:
 ```javascript
 import { init, verifyVPToken } from "@proof.com/proof-vc-common";
 
-init({
-  environment: "sandbox",
-  client_id: "verifier-demo",
-  callback_uri: "https://demo.next.proof.com/",
-});
+init({ trustRoot: "production" });
 
 const vpToken = "eyJwcm9vZl9pZ...";
-const presentation = verifyVPToken({
+const presentation = await verifyVPToken({
   encodedVPToken: vpToken,
   nonce: "3e8e4918-e9fb-453a-a538-81152be15c1b",
 });
 const verifiableCredential = presentation["proof_id_default"][0];
 
-if (verifiableCredential.isOver18()) {
+if (verifiableCredential.isOver18) {
   purchaseItem();
 } else {
   userNotOver18();
@@ -266,19 +264,15 @@ Verify a single SD-JWT-VC:
 ```javascript
 import { init, verify } from "@proof.com/proof-vc-common";
 
-init({
-  environment: "sandbox",
-  client_id: "verifier-demo",
-  callback_uri: "https://demo.next.proof.com/",
-});
+init({ trustRoot: "production" });
 
 const encodedSDJWT = "eyJraWQiOiI3...";
-const verifiableCredential = verify({
+const verifiableCredential = await verify({
   encodedSDJWT,
   nonce: "3e8e4918-e9fb-453a-a538-81152be15c1b",
 });
 
-if (verifiableCredential.isOver18()) {
+if (verifiableCredential.isOver18) {
   purchaseItem();
 } else {
   userNotOver18();
@@ -293,7 +287,7 @@ following the CA/B Forum Baseline Requirements for the Issuance and Management o
 The Proof Root CA R1 Certificate is published at http://cert.proof.com/proof-root-ca-r1.crt and
 is also committed in this repository [proof-root-ca-r1.crt](src/certificates/trust_store/proof_root_ca_r1.ts).
 
-The sandbox Root CA R1 Development certificate is also committed in this repository [proof-root-ca-r1-development.crt](src/certificates/trust_store/proof_root_ca_r1_development.ts) and used when `environment: "sandbox"`.
+The sandbox Root CA R1 Development certificate is also committed in this repository [proof-root-ca-r1-development.crt](src/certificates/trust_store/proof_root_ca_r1_development.ts) and used when `trustRoot: "development"`.
 
 ## Documentation
 
