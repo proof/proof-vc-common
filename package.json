@@ -1,6 +1,6 @@
 {
   "name": "@proof.com/proof-vc-common",
-  "version": "0.1.4",
+  "version": "0.2.0",
   "description": "A digital passport. Verified once, usable everywhere.",
   "keywords": [
     "VC",
