@@ -33,13 +33,11 @@ export type NodeInitParams = {
 
 export type VerifyParams = {
   encodedSDJWT: string;
-  nonce?: string;
   aud?: string;
 };
 
 export type VerifyVPTokenParams = {
   encodedVPToken: string;
-  nonce?: string;
   aud?: string;
 };
 
@@ -149,7 +147,6 @@ export class NodeVCPresentationClient extends VCPresentationClient {
 
   public async verify({
     encodedSDJWT,
-    nonce,
     aud,
   }: VerifyParams): Promise<ProofCredential> {
     const decoded = await new SDJwtVcInstance({ hasher }).decode(encodedSDJWT);
@@ -164,16 +161,18 @@ export class NodeVCPresentationClient extends VCPresentationClient {
     }
 
     let kbVerifier = null;
+    let keyBindingNonce: string | undefined;
     const kbAlg = decoded.kbJwt?.header?.alg;
     if (decoded.kbJwt !== undefined) {
-      if (nonce === undefined) {
-        throw "SD-JWT-VC contains a KB JWT but no nonce was supplied for verification";
-      }
       if (!isSupportedAlg(kbAlg)) {
         throw `Unsupported or missing KB JWT alg: ${kbAlg}`;
       }
       if (aud !== undefined && decoded.kbJwt.payload?.aud !== aud) {
         throw `KB JWT aud ${decoded.kbJwt.payload?.aud} does not match expected aud ${aud}`;
+      }
+      keyBindingNonce = decoded.kbJwt.payload?.nonce;
+      if (keyBindingNonce === undefined) {
+        throw "SD-JWT-VC contains a KB JWT but no nonce claim";
       }
       kbVerifier = kbVerifierFor(kbAlg);
     } else if (aud !== undefined) {
@@ -197,7 +196,7 @@ export class NodeVCPresentationClient extends VCPresentationClient {
       ...(kbVerifier !== null && { kbVerifier }),
     });
     await SDJWTClient.verify(encodedSDJWT, {
-      ...(nonce !== undefined ? { keyBindingNonce: nonce } : {}),
+      ...(keyBindingNonce !== undefined && { keyBindingNonce }),
     });
 
     return getProofCredential(decoded);
@@ -205,7 +204,6 @@ export class NodeVCPresentationClient extends VCPresentationClient {
 
   public async verifyVPToken({
     encodedVPToken,
-    nonce,
     aud,
   }: VerifyVPTokenParams): Promise<VPToken> {
     const records = JSON.parse(base64urlDecode(encodedVPToken)) as Record<
@@ -220,7 +218,6 @@ export class NodeVCPresentationClient extends VCPresentationClient {
       for (const encodedSDJWT of encodedSDJWTs) {
         const credential = await this.verify({
           encodedSDJWT,
-          ...(nonce !== undefined && { nonce }),
           ...(aud !== undefined && { aud }),
         });
         vpToken[credentialId].push(credential);

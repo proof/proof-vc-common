@@ -18,6 +18,7 @@ Read our [documentation](https://dev.proof.com/docs/digital-credentials-overview
     - [Scopes](#scopes)
     - [Transaction Templates](#transaction-templates)
   - [Verify](#verify)
+    - [Nonce](#nonce)
 - [Certificate Authority](#certificate-authority)
 - [Documentation](#documentation)
 - [Contributing](#contributing)
@@ -246,10 +247,7 @@ import { init, verifyVPToken } from "@proof.com/proof-vc-common";
 init({ trustRoot: "production" });
 
 const vpToken = "eyJwcm9vZl9pZ...";
-const presentation = await verifyVPToken({
-  encodedVPToken: vpToken,
-  nonce: "3e8e4918-e9fb-453a-a538-81152be15c1b",
-});
+const presentation = await verifyVPToken({ encodedVPToken: vpToken });
 const verifiableCredential = presentation["proof_id_default"][0];
 
 if (verifiableCredential.isOver18) {
@@ -267,15 +265,26 @@ import { init, verify } from "@proof.com/proof-vc-common";
 init({ trustRoot: "production" });
 
 const encodedSDJWT = "eyJraWQiOiI3...";
-const verifiableCredential = await verify({
-  encodedSDJWT,
-  nonce: "3e8e4918-e9fb-453a-a538-81152be15c1b",
-});
+const verifiableCredential = await verify({ encodedSDJWT });
 
 if (verifiableCredential.isOver18) {
   purchaseItem();
 } else {
   userNotOver18();
+}
+```
+
+#### Nonce
+
+Validating the `nonce` is out of scope of `verify` and `verifyVPToken`. The `nonce` signed in the Key Binding JWT is exposed on the returned credential and should be validated by the caller against the `nonce` sent in the [Request](#request):
+
+```javascript
+const verifiableCredential = await verify({ encodedSDJWT });
+
+if (
+  verifiableCredential.getNonce() !== "3e8e4918-e9fb-453a-a538-81152be15c1b"
+) {
+  throw new Error("nonce mismatch");
 }
 ```
 

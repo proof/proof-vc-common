@@ -27,6 +27,10 @@ abstract class Credential implements ProofCredential {
   public getSDJWT(): SDJwt {
     return this.sdjwt;
   }
+
+  public getNonce(): string | undefined {
+    return this.sdjwt.kbJwt?.payload?.nonce;
+  }
 }
 
 type ProofCredentialV1Params = {

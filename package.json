@@ -50,6 +50,7 @@
     "lint": "eslint . --fix",
     "lint:check": "eslint .",
     "publint": "publint --pack npm",
+    "test": "tsc && node --test test/*.test.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
