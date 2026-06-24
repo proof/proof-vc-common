@@ -1,4 +1,8 @@
-import type { AuthorizationRequestParams } from "./presentation/base_client.ts";
+import type {
+  AuthorizationRequestParams,
+  DCAPIAuthorizationRequestParams,
+  AuthorizationRequest,
+} from "./presentation/base_client.ts";
 import {
   NodeVCPresentationClient,
   type NodeInitParams,
@@ -21,6 +25,14 @@ export async function getAuthorizationRequestURL(
   if (!instance)
     throw "NodeVCPresentationClient not initialized — call init() first (node)";
   return instance.getAuthorizationRequestURL(params);
+}
+
+export function getDCAPIAuthorizationRequest(
+  params: DCAPIAuthorizationRequestParams,
+): AuthorizationRequest {
+  if (!instance)
+    throw "NodeVCPresentationClient not initialized — call init() first (node)";
+  return instance.getDCAPIAuthorizationRequest(params);
 }
 
 export async function verify(params: VerifyParams): Promise<ProofCredential> {

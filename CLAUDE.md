@@ -19,6 +19,8 @@ Browser-runtime files (reachable from `src/index.browser.ts`):
 - `src/vc_presentation.browser.ts`
 - `src/presentation/base_client.ts`
 - `src/transaction_data.ts`
+- `src/dcql.ts`
+- `src/constants.ts`
 - `src/types.ts` (type-only, erased at emit)
 
 Everything else under `src/` is Node-side. Verify after build:
@@ -26,7 +28,8 @@ Everything else under `src/` is Node-side. Verify after build:
 ```bash
 grep -lE '(jose|@sd-jwt|@owf|node:)' \
   dist/index.browser.js dist/vc_presentation.browser.js \
-  dist/presentation/base_client.js dist/transaction_data.js dist/types.js
+  dist/presentation/base_client.js dist/transaction_data.js \
+  dist/dcql.js dist/constants.js dist/types.js
 # Must match nothing.
 ```
 

@@ -1,6 +1,7 @@
 import type { CredentialID } from "./types.ts";
+import { DEFAULT_CREDENTIAL_ID } from "./constants.ts";
 
-const CREDENTIAL_IDS: CredentialID[] = ["proof_id_default"];
+const CREDENTIAL_IDS: CredentialID[] = [DEFAULT_CREDENTIAL_ID];
 
 export const credentialIdAsType = (s: string): CredentialID => {
   for (const credentialId of CREDENTIAL_IDS) {
