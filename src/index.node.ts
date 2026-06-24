@@ -14,9 +14,21 @@ export type {
 
 export { TX_DATA_TYPE, transactionData } from "./transaction_data.ts";
 
+export type {
+  DCQLQuery,
+  DCQLCredentialQuery,
+  DCQLCredentialQueryMeta,
+} from "./dcql.ts";
+
+export { DCQL_QUERY_BASIC } from "./dcql.ts";
+
 export { ProofCredentialV1 } from "./proof_credentials.ts";
 
-export type { AuthorizationRequestParams } from "./presentation/base_client.ts";
+export type {
+  AuthorizationRequestParams,
+  DCAPIAuthorizationRequestParams,
+  AuthorizationRequest,
+} from "./presentation/base_client.ts";
 export type {
   NodeInitParams,
   VerifyParams,
@@ -26,6 +38,7 @@ export type {
 export {
   init,
   getAuthorizationRequestURL,
+  getDCAPIAuthorizationRequest,
   verify,
   verifyVPToken,
 } from "./vc_presentation.node.ts";

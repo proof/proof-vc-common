@@ -8,6 +8,7 @@ import {
   encodeTransactionData,
   type TransactionData,
 } from "../transaction_data.ts";
+import type { DCQLQuery } from "../dcql.ts";
 
 export type BrowserInitParams = {
   environment: Environment;
@@ -16,12 +17,31 @@ export type BrowserInitParams = {
   responseMode?: ResponseMode;
 };
 
-export type AuthorizationRequestParams = {
-  scope: Scope;
+type BaseAuthorizationRequestParams = {
   nonce: string;
   state?: string;
   loginHint?: string;
   transactionData?: TransactionData | string;
+};
+
+export type AuthorizationRequestParams = BaseAuthorizationRequestParams &
+  (
+    | { scope: Scope; dcqlQuery?: never }
+    | { dcqlQuery: DCQLQuery; scope?: never }
+  );
+
+export type DCAPIAuthorizationRequestParams = {
+  dcqlQuery: DCQLQuery;
+  nonce: string;
+  transactionData?: TransactionData | string;
+};
+
+export type AuthorizationRequest = {
+  response_type: ResponseType;
+  response_mode: "dc_api";
+  nonce: string;
+  dcql_query: DCQLQuery;
+  transaction_data?: string[];
 };
 
 export class VCPresentationClient {
@@ -57,6 +77,28 @@ export class VCPresentationClient {
   ): Promise<string> {
     this.requireRequestConfig();
     return this.buildAuthorizeURL(params);
+  }
+
+  // Builds an unsigned DC API request (`response_mode: "dc_api"`). DC API
+  // requests will eventually be signed (`response_mode: "dc_api.jwt"`).
+  public getDCAPIAuthorizationRequest({
+    dcqlQuery,
+    nonce,
+    transactionData,
+  }: DCAPIAuthorizationRequestParams): AuthorizationRequest {
+    const encodedTransactionData =
+      typeof transactionData === "object"
+        ? encodeTransactionData(transactionData)
+        : transactionData;
+    return {
+      response_type: this.responseType,
+      response_mode: "dc_api",
+      nonce,
+      dcql_query: dcqlQuery,
+      ...(encodedTransactionData !== undefined && {
+        transaction_data: [encodedTransactionData],
+      }),
+    };
   }
 
   protected requireRequestConfig(): void {
@@ -96,18 +138,23 @@ export class VCPresentationClient {
 
   protected buildParameters({
     scope,
+    dcqlQuery,
     nonce,
     state,
     loginHint,
     transactionData,
   }: AuthorizationRequestParams): URLSearchParams {
+    if ((scope === undefined) === (dcqlQuery === undefined)) {
+      throw "authorization request requires exactly one of `scope` or `dcqlQuery`";
+    }
     const encodedTransactionData =
       typeof transactionData === "object"
         ? encodeTransactionData(transactionData)
         : transactionData;
     return new URLSearchParams({
       ...this.defaultAuthorizationRequestParameters(),
-      scope,
+      ...(scope !== undefined && { scope }),
+      ...(dcqlQuery !== undefined && { dcql_query: JSON.stringify(dcqlQuery) }),
       nonce,
       ...(state !== undefined && { state }),
       ...(loginHint !== undefined && { login_hint: loginHint }),

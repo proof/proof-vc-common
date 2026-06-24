@@ -2,6 +2,8 @@ import {
   VCPresentationClient,
   type BrowserInitParams,
   type AuthorizationRequestParams,
+  type DCAPIAuthorizationRequestParams,
+  type AuthorizationRequest,
 } from "./presentation/base_client.ts";
 
 let instance: VCPresentationClient | null = null;
@@ -18,4 +20,12 @@ export async function getAuthorizationRequestURL(
   if (!instance)
     throw "VCPresentationClient not initialized — call init() first (browser)";
   return instance.getAuthorizationRequestURL(params);
+}
+
+export function getDCAPIAuthorizationRequest(
+  params: DCAPIAuthorizationRequestParams,
+): AuthorizationRequest {
+  if (!instance)
+    throw "VCPresentationClient not initialized — call init() first (browser)";
+  return instance.getDCAPIAuthorizationRequest(params);
 }

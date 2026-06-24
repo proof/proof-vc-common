@@ -1,3 +1,5 @@
+import { DEFAULT_CREDENTIAL_ID } from "./constants.ts";
+
 export const TX_DATA_TYPE = {
   WIRE_INSTRUCTIONS:
     "urn:proof:params:vc:transaction-data:wire-instructions:v1",
@@ -6,7 +8,7 @@ export const TX_DATA_TYPE = {
   SESSION_DATA: "urn:proof:params:vc:transaction-data:session-data",
 } as const;
 
-const CREDENTIAL_IDS = ["proof_id_default"] as const;
+const CREDENTIAL_IDS = [DEFAULT_CREDENTIAL_ID] as const;
 
 export type WireInstructionsPayload = {
   recipient: {

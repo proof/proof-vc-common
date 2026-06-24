@@ -4,6 +4,7 @@ import {
   ProofCredentialV1,
 } from "./proof_credentials.ts";
 import { hasher } from "@owf/crypto";
+import { PROOF_CREDENTIAL_V1_VCT } from "./constants.ts";
 
 export const getProofCredential = async (
   sdjwt: SDJwt,
@@ -11,7 +12,7 @@ export const getProofCredential = async (
   const claims = (await sdjwt.getClaims(hasher)) as Record<string, unknown>;
   const vct = claims["vct"];
 
-  if (vct === "https://credentials.notarize.com/ProofCredentialV1") {
+  if (vct === PROOF_CREDENTIAL_V1_VCT) {
     const ages =
       claims["age_equal_or_over"] !== undefined
         ? (claims["age_equal_or_over"] as Record<string, boolean>)
