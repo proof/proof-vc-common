@@ -19,6 +19,7 @@ export interface ProofCredential {
   format(): Format;
   getClaims(): Record<string, unknown>;
   getSDJWT(): SDJwt;
+  getNonce(): string | undefined;
 }
 
 export type VPToken = Record<CredentialID, ProofCredential[]>;
