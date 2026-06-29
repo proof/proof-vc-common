@@ -8,7 +8,7 @@ Dual-target ESM TypeScript library `@proof.com/proof-vc-common`. Browser entry e
 2. **Prompt before publishing.** Never bump version, push tags, create a Release, or trigger the publish workflow without explicit confirmation. Publishes are permanent.
 3. **Run `yarn check-all` before any commit or push.** Composes format, lint, typecheck, publint.
 4. **Keep `yarn publint` on `--pack npm`.** `--pack auto` picks yarn-1 mode and reports false-positive errors.
-5. **Don't lower `engines.node` below `>=22.0.0`.** `@sd-jwt/*` requires Node 20; Node 20 is past EOL.
+5. **Don't lower `engines.node` below `>=24.0.0`.** Node 24 is the active LTS; older LTS lines (20, 22) are EOL or near it. `@sd-jwt/*` requires Node 20+.
 6. **Never use `eslint-disable` as a workaround.** If a lint rule fires, fix the underlying code or surface the rule to the user for a config decision — do not silence it inline. Same applies to `@ts-ignore` / `@ts-expect-error` and other suppression comments.
 
 ## Browser Graph
@@ -112,7 +112,12 @@ The Release triggers `publish.yml`: check suite → tag must match `package.json
 
 Never `git push --follow-tags` to `main`: the commit is rejected but the tag still pushes, stranding it on an unmerged commit. Delete a stray tag with `git push --delete origin vX.Y.Z`.
 
+## Tooling (Yarn 4)
+
+- Yarn is pinned via `packageManager: yarn@4.17.0` (`.yarn/releases/yarn-4.17.0.cjs`). Run `corepack enable` so the project yarn is used; CI does the same.
+- `.yarnrc.yml` config: `nodeLinker: node-modules`, immutable installs (`enableImmutableInstalls: true` - no `--frozen-lockfile` needed), `enableScripts: false` (no postinstall scripts - a dep needing a build step at install won't run it), `npmMinimalAgeGate: 1w` (deps published <1 week ago won't install; matches the dependabot 7-day cooldown).
+- `yarn.lock` is the only lockfile.
+
 ## Notes
 
-- `yarn.lock` is the only lockfile (no `package-lock.json`).
 - Scope is `@proof.com` (with the dot), not `@proof`.

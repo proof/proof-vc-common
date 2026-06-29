@@ -14,55 +14,60 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - run: corepack enable
       - uses: actions/setup-node@v6
         with:
           node-version-file: .node-version
           cache: yarn
-      - run: yarn install --frozen-lockfile
+      - run: yarn install
       - run: yarn format:check
 
   lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - run: corepack enable
       - uses: actions/setup-node@v6
         with:
           node-version-file: .node-version
           cache: yarn
-      - run: yarn install --frozen-lockfile
+      - run: yarn install
       - run: yarn lint:check
 
   typecheck:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - run: corepack enable
       - uses: actions/setup-node@v6
         with:
           node-version-file: .node-version
           cache: yarn
-      - run: yarn install --frozen-lockfile
+      - run: yarn install
       - run: yarn typecheck
 
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - run: corepack enable
       - uses: actions/setup-node@v6
         with:
           node-version-file: .node-version
           cache: yarn
-      - run: yarn install --frozen-lockfile
+      - run: yarn install
       - run: yarn test
 
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - run: corepack enable
       - uses: actions/setup-node@v6
         with:
           node-version-file: .node-version
           cache: yarn
-      - run: yarn install --frozen-lockfile
+      - run: yarn install
       - run: yarn build
       - uses: actions/upload-artifact@v7
         with:
@@ -75,11 +80,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - run: corepack enable
       - uses: actions/setup-node@v6
         with:
           node-version-file: .node-version
           cache: yarn
-      - run: yarn install --frozen-lockfile
+      - run: yarn install
       # publint resolves the package `exports` against the packed tarball, which
       # references ./dist/*. Reuse the build job's output instead of rebuilding.
       - uses: actions/download-artifact@v8
