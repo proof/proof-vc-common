@@ -2,8 +2,8 @@
 
 ## Requirements
 
-- `node` >= 22.0.0
-- `yarn`
+- `node` >= 24.0.0 (active LTS)
+- `yarn` 4 - run `corepack enable`; the version is pinned via `packageManager` in `package.json`.
 
 ## Design Principles
 
@@ -21,8 +21,10 @@ Cryptographic operations (e.g. VC signature verification) are only done in node 
 - `yarn build`
 - `yarn format`
 - `yarn lint`
-- `yarn typcheck`
+- `yarn typecheck`
+- `yarn test`
 - `yarn publint`
+- `yarn check-all`
 
 ## Pull Requests
 
