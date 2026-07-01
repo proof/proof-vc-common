@@ -46,17 +46,29 @@ jobs:
       - run: yarn install
       - run: yarn typecheck
 
-  test:
+  test-matrix:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [22, 24]
     steps:
       - uses: actions/checkout@v7
       - run: corepack enable
       - uses: actions/setup-node@v6
         with:
-          node-version-file: .node-version
+          node-version: ${{ matrix.node-version }}
           cache: yarn
       - run: yarn install
       - run: yarn test
+
+  test:
+    needs: test-matrix
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - if: needs.test-matrix.result != 'success'
+        run: exit 1
 
   build:
     runs-on: ubuntu-latest

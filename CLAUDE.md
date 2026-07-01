@@ -8,7 +8,7 @@ Dual-target ESM TypeScript library `@proof.com/proof-vc-common`. Browser entry e
 2. **Prompt before publishing.** Never bump version, push tags, create a Release, or trigger the publish workflow without explicit confirmation. Publishes are permanent.
 3. **Run `yarn check-all` before any commit or push.** Composes format, lint, typecheck, publint.
 4. **Keep `yarn publint` on `--pack npm`.** `--pack auto` picks yarn-1 mode and reports false-positive errors.
-5. **Don't lower `engines.node` below `>=24.0.0`.** Node 24 is the active LTS; older LTS lines (20, 22) are EOL or near it. `@sd-jwt/*` requires Node 20+.
+5. **Keep `engines.node` at `>=22.0.0` and keep the CI `test-matrix` covering that floor.** Node 22 is the oldest maintained LTS (Node 20 is EOL; `@sd-jwt/*` needs 20+). `>=22` is a lower bound, so it still allows 24 and newer. The floor is checked at runtime by the `test-matrix` job (`yarn test` on Node 22 and 24); `@types/node` tracks the dev runtime (24, from `.node-version`), not the floor. Invariant: the `test-matrix` low entry must equal the `engines.node` floor, so raise the floor by bumping both together. If you drop the matrix, pin `@types/node` to the floor major so typecheck guards it instead.
 6. **Never use `eslint-disable` as a workaround.** If a lint rule fires, fix the underlying code or surface the rule to the user for a config decision — do not silence it inline. Same applies to `@ts-ignore` / `@ts-expect-error` and other suppression comments.
 
 ## Browser Graph
