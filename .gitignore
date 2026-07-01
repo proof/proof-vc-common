@@ -1,5 +1,6 @@
 # Build artifacts
 dist/
+*.tsbuildinfo
 
 # Dependency artifacts
 node_modules/

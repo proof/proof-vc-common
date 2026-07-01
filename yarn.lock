@@ -134,29 +134,35 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@proof.com/proof-vc-common@workspace:.":
+"@proof.com/proof-vc-common@npm:^0.3.0, @proof.com/proof-vc-common@workspace:packages/common":
   version: 0.0.0-use.local
-  resolution: "@proof.com/proof-vc-common@workspace:."
+  resolution: "@proof.com/proof-vc-common@workspace:packages/common"
+  dependencies:
+    publint: "npm:^0.3.21"
+    typescript: "npm:^6.0.3"
+  languageName: unknown
+  linkType: soft
+
+"@proof.com/proof-vc-server@workspace:packages/server":
+  version: 0.0.0-use.local
+  resolution: "@proof.com/proof-vc-server@workspace:packages/server"
   dependencies:
     "@owf/crypto": "npm:^0.3.0"
     "@owf/identity-common": "npm:^0.3.0"
+    "@proof.com/proof-vc-common": "npm:^0.3.0"
     "@sd-jwt/core": "npm:^0.19.0"
     "@sd-jwt/sd-jwt-vc": "npm:^0.19.0"
-    "@types/node": "npm:^24.13.2"
-    eslint: "npm:^10.5.0"
-    eslint-plugin-unused-imports: "npm:^4.4.1"
-    prettier: "npm:^3.8.4"
-    prettier-plugin-packagejson: "npm:^3.0.2"
     publint: "npm:^0.3.21"
     typescript: "npm:^6.0.3"
-    typescript-eslint: "npm:^8.62.0"
   languageName: unknown
   linkType: soft
 
 "@publint/pack@npm:^0.1.4":
-  version: 0.1.4
-  resolution: "@publint/pack@npm:0.1.4"
-  checksum: 10c0/f70b2c8951b5d312ecfd40534e1dd1b0a4fe0fd207879a73c168e3f6979df6202b8b4d4f9a0ee9de6443f0bfb95ef47a0c27c7138c083d9224ef27c67adddefd
+  version: 0.1.5
+  resolution: "@publint/pack@npm:0.1.5"
+  dependencies:
+    tinyexec: "npm:^1.2.4"
+  checksum: 10c0/b92344164e5e0c9b7103a8451bf8b0dede475c04ce6150d8d0c2b5a37260068ad35e3869fdc283f6fbaf7e9f19644e2d3728c13e05a35e200f08dce6981fbd97
   languageName: node
   linkType: hard
 
@@ -408,11 +414,11 @@ __metadata:
   linkType: hard
 
 "acorn@npm:^8.16.0":
-  version: 8.16.0
-  resolution: "acorn@npm:8.16.0"
+  version: 8.17.0
+  resolution: "acorn@npm:8.17.0"
   bin:
     acorn: bin/acorn
-  checksum: 10c0/c9c52697227661b68d0debaf972222d4f622aa06b185824164e153438afa7b08273432ca43ea792cadb24dada1d46f6f6bb1ef8de9956979288cc1b96bf9914e
+  checksum: 10c0/5dcefea5f8f023b6cc24cbe71fb5a8112b601d36c4fa07d14e4e6ffc2ee47383332c46b36c766d9437725aa6660156eae50efa0c838719823b50d7c327c4ed42
   languageName: node
   linkType: hard
 
@@ -884,9 +890,9 @@ __metadata:
   linkType: hard
 
 "pako@npm:^2.1.0":
-  version: 2.1.0
-  resolution: "pako@npm:2.1.0"
-  checksum: 10c0/8e8646581410654b50eb22a5dfd71159cae98145bd5086c9a7a816ec0370b5f72b4648d08674624b3870a521e6a3daffd6c2f7bc00fdefc7063c9d8232ff5116
+  version: 2.2.0
+  resolution: "pako@npm:2.2.0"
+  checksum: 10c0/e5d31de1940fdd13cc4014296b0026112483d0834bce4856ca29c8af8438d030c6416986a0f6df7d5372cae18d6dd6c57f48b24a49d6c207c0a4cc66af15c07d
   languageName: node
   linkType: hard
 
@@ -948,6 +954,21 @@ __metadata:
   languageName: node
   linkType: hard
 
+"proof-vc-workspace@workspace:.":
+  version: 0.0.0-use.local
+  resolution: "proof-vc-workspace@workspace:."
+  dependencies:
+    "@types/node": "npm:^24.13.2"
+    eslint: "npm:^10.5.0"
+    eslint-plugin-unused-imports: "npm:^4.4.1"
+    prettier: "npm:^3.8.4"
+    prettier-plugin-packagejson: "npm:^3.0.2"
+    publint: "npm:^0.3.21"
+    typescript: "npm:^6.0.3"
+    typescript-eslint: "npm:^8.62.0"
+  languageName: unknown
+  linkType: soft
+
 "publint@npm:^0.3.21":
   version: 0.3.21
   resolution: "publint@npm:0.3.21"
@@ -979,11 +1000,11 @@ __metadata:
   linkType: hard
 
 "semver@npm:^7.7.3":
-  version: 7.8.1
-  resolution: "semver@npm:7.8.1"
+  version: 7.8.5
+  resolution: "semver@npm:7.8.5"
   bin:
     semver: bin/semver.js
-  checksum: 10c0/92d6871d6347e1f99d0ba396a70f2545ccf2a032cda3d378fa0699edf7506b5c6d266aed55c8b88e72bd91a30d2351e4f39db479375374430fcdc4b58f4e3c1a
+  checksum: 10c0/b1f3127a5be8125a94f37188b361c212466c292c6910adce3ec106cff5dc211ccaedc4739c11bb70fda59d6fc1f040a9bca289f4e093451521a2372e5231fe0c
   languageName: node
   linkType: hard
 
@@ -1011,8 +1032,8 @@ __metadata:
   linkType: hard
 
 "sort-package-json@npm:^3.6.0":
-  version: 3.6.1
-  resolution: "sort-package-json@npm:3.6.1"
+  version: 3.7.1
+  resolution: "sort-package-json@npm:3.7.1"
   dependencies:
     detect-indent: "npm:^7.0.2"
     detect-newline: "npm:^4.0.1"
@@ -1023,17 +1044,24 @@ __metadata:
     tinyglobby: "npm:^0.2.15"
   bin:
     sort-package-json: cli.js
-  checksum: 10c0/169ea6b8fa233b77ff93f928c73392cbd53573b1faec24692b7b5afdd3487f1b1c3f390467628385dd64e3e01632b7be0c6b380fbb471c70d00c4c7884f44916
+  checksum: 10c0/2403faf859439c10a0562b02c34ff28480171fa8f3991bac6fe8652c8996cfe04f97409e220185f64eefb4c05a5fd83ba43a92d1c8d52a4cdb635bc81113faba
+  languageName: node
+  linkType: hard
+
+"tinyexec@npm:^1.2.4":
+  version: 1.2.4
+  resolution: "tinyexec@npm:1.2.4"
+  checksum: 10c0/153b8db6b080194b558ff145b9cffc36b80a6e07babd644dcfbe49c807eee668c876049d28bdee90b96304476f883352f2dad91b3f86bc23832532f4363e66ff
   languageName: node
   linkType: hard
 
 "tinyglobby@npm:^0.2.15":
-  version: 0.2.16
-  resolution: "tinyglobby@npm:0.2.16"
+  version: 0.2.17
+  resolution: "tinyglobby@npm:0.2.17"
   dependencies:
     fdir: "npm:^6.5.0"
     picomatch: "npm:^4.0.4"
-  checksum: 10c0/f2e09fd93dd95c41e522113b686ff6f7c13020962f8698a864a257f3d7737599afc47722b7ab726e12f8a813f779906187911ff8ee6701ede65072671a7e934b
+  checksum: 10c0/7f7bb0f197c88bc4b20c231e0deca4240ca3bf313a88f5a7fee93a872b84966a4d50220947c0455ad07a60b3b360961c5b7fd979222aeb716a9f99b412002e4c
   languageName: node
   linkType: hard
 

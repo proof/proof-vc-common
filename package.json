@@ -1,63 +1,23 @@
 {
-  "name": "@proof.com/proof-vc-common",
-  "version": "0.2.0",
-  "description": "A digital passport. Verified once, usable everywhere.",
-  "keywords": [
-    "VC",
-    "Verifiable Credentials",
-    "OID4VCI",
-    "OID4VCP",
-    "SD-JWT-VC",
-    "Selective Disclosures",
-    "Proof",
-    "Proof.com",
-    "OAuth"
-  ],
-  "homepage": "https://github.com/proof/proof-vc-common",
-  "bugs": "https://github.com/proof/proof-vc-common/issues",
-  "repository": {
-    "type": "git",
-    "url": "git+ssh://git@github.com/proof/proof-vc-common.git"
-  },
+  "name": "proof-vc-workspace",
+  "version": "0.3.0",
+  "private": true,
   "license": "Apache-2.0",
   "author": "Jeremie Charrier <jeremie.charrier@proof.com>",
-  "sideEffects": false,
   "type": "module",
-  "exports": {
-    ".": {
-      "browser": {
-        "types": "./dist/index.browser.d.ts",
-        "default": "./dist/index.browser.js"
-      },
-      "node": {
-        "types": "./dist/index.node.d.ts",
-        "default": "./dist/index.node.js"
-      },
-      "default": {
-        "types": "./dist/index.node.d.ts",
-        "default": "./dist/index.node.js"
-      }
-    }
-  },
-  "files": [
-    "dist"
+  "workspaces": [
+    "packages/*"
   ],
   "scripts": {
-    "build": "tsc",
-    "check-all": "yarn format && yarn lint && yarn typecheck && yarn publint",
+    "build": "tsc -b",
+    "check-all": "yarn format && yarn lint && yarn build && yarn publint",
+    "clean": "tsc -b --clean",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint . --fix",
     "lint:check": "eslint .",
-    "publint": "publint --pack npm",
-    "test": "tsc && node --test test/*.test.mjs",
-    "typecheck": "tsc --noEmit"
-  },
-  "dependencies": {
-    "@owf/crypto": "^0.3.0",
-    "@owf/identity-common": "^0.3.0",
-    "@sd-jwt/core": "^0.19.0",
-    "@sd-jwt/sd-jwt-vc": "^0.19.0"
+    "publint": "yarn workspaces foreach --all --no-private run publint",
+    "test": "yarn workspaces foreach --all --no-private run test"
   },
   "devDependencies": {
     "@types/node": "^24.13.2",
@@ -72,8 +32,5 @@
   "packageManager": "yarn@4.17.0",
   "engines": {
     "node": ">=22.0.0"
-  },
-  "publishConfig": {
-    "access": "public"
   }
 }

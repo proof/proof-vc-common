@@ -1,0 +1,32 @@
+{
+  // Shared compiler options for every workspace package.
+  // Per-package tsconfigs set rootDir/outDir/lib/types and (for the server) references.
+  "compilerOptions": {
+    // Environment
+    "module": "nodenext",
+    "target": "esnext",
+
+    // Outputs
+    "sourceMap": true,
+    "declaration": true,
+    "declarationMap": true,
+    "composite": true,
+
+    // Stricter Typechecking
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "strict": true,
+
+    // Recommended
+    "jsx": "react-jsx",
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "noUncheckedSideEffectImports": true,
+    "moduleDetection": "force",
+    "skipLibCheck": true,
+
+    // Custom: allow `.ts` import specifiers, rewritten to `.js` on emit
+    "rewriteRelativeImportExtensions": true,
+    "allowImportingTsExtensions": true
+  }
+}

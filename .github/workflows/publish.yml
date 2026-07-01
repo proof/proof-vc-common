@@ -23,15 +23,19 @@ jobs:
           cache: yarn
       - run: yarn install
       - run: yarn lint:check
-      - run: yarn typecheck
       - run: yarn build
       - run: yarn publint
-      - name: Verify tag matches package.json
+      - name: Verify tag matches package versions
         run: |
-          PKG_VERSION=$(node -p "require('./package.json').version")
           TAG_VERSION="${GITHUB_REF_NAME#v}"
-          if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
-            echo "Version mismatch: package.json=$PKG_VERSION, tag=$TAG_VERSION"
-            exit 1
-          fi
-      - run: npm publish --provenance --access public
+          for pkg in common server; do
+            PKG_VERSION=$(node -p "require('./packages/${pkg}/package.json').version")
+            if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
+              echo "Version mismatch in ${pkg}: package.json=$PKG_VERSION, tag=$TAG_VERSION"
+              exit 1
+            fi
+          done
+      - name: Publish @proof.com/proof-vc-common
+        run: npm publish -w packages/common --provenance --access public --no-package-lock
+      - name: Publish @proof.com/proof-vc-server
+        run: npm publish -w packages/server --provenance --access public --no-package-lock

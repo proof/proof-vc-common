@@ -5,7 +5,7 @@ export function verifyChain(
   root: X509Certificate,
 ): void {
   if (chain.length === 0) {
-    throw "verifyChain: empty chain";
+    throw new Error("verifyChain: empty chain");
   }
 
   const full = [...chain, root];
@@ -18,20 +18,20 @@ export function verifyChain(
     const validFrom = new Date(cert.validFromDate);
     const validTo = new Date(cert.validToDate);
     if (now < validFrom || now > validTo) {
-      throw `Certificate at index ${i} is expired or not yet valid`;
+      throw new Error(`Certificate at index ${i} is expired or not yet valid`);
     }
     if (!cert.checkIssued(issuer)) {
-      throw `Certificate at index ${i} not issued by next in chain`;
+      throw new Error(`Certificate at index ${i} not issued by next in chain`);
     }
     if (!cert.verify(issuer.publicKey)) {
-      throw `Certificate at index ${i} has invalid signature`;
+      throw new Error(`Certificate at index ${i} has invalid signature`);
     }
   }
 
   if (now > new Date(root.validToDate)) {
-    throw "Root certificate expired";
+    throw new Error("Root certificate expired");
   }
   if (!root.verify(root.publicKey)) {
-    throw "Root is not self-signed";
+    throw new Error("Root is not self-signed");
   }
 }

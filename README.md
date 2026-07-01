@@ -4,12 +4,15 @@
 
 _A digital passport. Verified once, usable everywhere._
 
-Read our [documentation](https://dev.proof.com/docs/digital-credentials-overview) or [try it](https://demo.next.proof.com)!
+Read our [documentation](https://dev.proof.com/docs/digital-credentials-overview) or [try it](https://try.proof.com)!
 
 ## Table of Contents
 
+- [Packages](#packages)
 - [Installation](#installation)
 - [Getting Started](#getting-started)
+  - [Client Side](#client-side)
+  - [Server Side](#server-side)
   - [Response Modes](#response-modes)
   - [Pushed Authorization Requests](#pushed-authorization-requests)
 - [Verifiable Credential Presentation](#verifiable-credential-presentation)
@@ -23,50 +26,125 @@ Read our [documentation](https://dev.proof.com/docs/digital-credentials-overview
 - [Documentation](#documentation)
 - [Contributing](#contributing)
 
+## Packages
+
+| Package                                             | Runtime             | Usage                                                                                                      | Runtime deps |
+| --------------------------------------------------- | ------------------- | ---------------------------------------------------------------------------------------------------------- | ------------ |
+| **[`@proof.com/proof-vc-common`](packages/common)** | browser **or** Node | Request a Verifiable Presentation                                                                          | **0** ✅     |
+| **[`@proof.com/proof-vc-server`](packages/server)** | Node                | `proof-vc-common` **plus** Presentation Verification, Pushed Authorization Requests, Transaction Templates | sd-jwt, owf  |
+
 ## Installation
+
+Browser / Node:
 
 ```
 npm install @proof.com/proof-vc-common
 ```
 
-The library provides 2 distinct browser and Node.js distributions, see [package.json](package.json) `exports`. The browser distribution has **0 dependencies** :white_check_mark:
+Node:
 
-## Getting Started
+```
+npm install @proof.com/proof-vc-server
+```
 
 Proof implements the [OpenID for Verifiable Presentations 1.0](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html) specification.
 [Setup an OAuth Application](https://dev.proof.com/docs/oauth-client-credentials) in your Proof account to get your `client_id`.
 
-Initialize the library at the start of your application:
+## Getting Started
+
+### Client Side
+
+You can request a Verifiable Presentation in the browser by using `createClient` and `authorizationUrl` to craft an Authorization Request URL.
+Either `fragment` or `direct_post` [Response Mode](#response-modes) are supported (defaults to `fragment`).
+
+- if using `fragment`, at the callback URI, use `parseAuthorizationResponse` to extract the `vp_token` from it and send it to your verification endpoint
+- if using `direct_post`, the `vp_token` is sent directly to your verification endpoint
 
 ```javascript
-import { init } from "@proof.com/proof-vc-common";
+import {
+  createClient,
+  parseAuthorizationResponse,
+} from "@proof.com/proof-vc-common";
 
-init({
+const proof = createClient({
   environment: "sandbox",
   clientId: "verifier-demo",
+  callbackUri: "https://example.com/verify_vp_token",
+});
+
+button.onclick = () => {
+  window.location.href = proof.authorizationUrl({
+    nonce: "3e8e4918-e9fb-453a-a538-81152be15c1b",
+    scope: "urn:proof:params:scope:verifiable-credentials:basic",
+  });
+};
+
+const response = parseAuthorizationResponse(); // reads window.location.hash
+if (response) {
+  await fetch("/verify_vp_token", {
+    method: "POST",
+    body: JSON.stringify(response),
+  });
+}
+```
+
+You can also use `buildAuthorizationUrl` to provide all the Authorization Request parameters at once:
+
+```javascript
+import { buildAuthorizationUrl } from "@proof.com/proof-vc-common";
+
+window.location.href = buildAuthorizationUrl({
+  environment: "sandbox",
+  clientId: "verifier-demo",
+  callbackUri: "https://example.com/verify_vp_token",
+  nonce: "3e8e4918-e9fb-453a-a538-81152be15c1b",
+  scope: "urn:proof:params:scope:verifiable-credentials:basic",
+});
+```
+
+### Server Side
+
+You can request a Verifiable Presentation from our backend by using `createClient` and `authorizationUrl` to craft an Authorization Request URL.
+Either `fragment` or `direct_post` [Response Mode](#response-modes) are supported (defaults to `fragment`).
+
+With [`@proof.com/proof-vc-server`](packages/server) you can also use [Pushed Authorization Requests](#pushed-authorization-requests) and [Transaction Templates](#transaction-templates).
+
+```javascript
+import { createClient } from "@proof.com/proof-vc-server";
+
+const proof = createClient({
+  environment: "sandbox",
+  clientId: "verifier-demo",
+  callbackUri: "https://example.com/verify_vp_token",
   responseMode: "direct_post",
-  callbackUri: "http://localhost/verify_vp_token",
+});
+
+const redirect = await proof.authorizationUrl({
+  nonce: "3e8e4918-e9fb-453a-a538-81152be15c1b",
+  scope: "urn:proof:params:scope:verifiable-credentials:basic",
+  state: "6A2B4CD830",
+  loginHint: "frodo.baggins@theshire",
 });
 ```
 
 ### Response Modes
 
-Proof supports `fragment` and `direct_post` response modes.
+Proof supports `fragment` and `direct_post` response modes (default `fragment`).
 
 #### fragment
 
-Using `fragment` the `vp_token` is returned as a fragment of the `callbackUri` when the user is 302 redirected from Proof to your website.
+Using `fragment` the `vp_token` is returned as a fragment of the `callbackUri` when the user is 302 redirected from Proof to your website. Use `parseAuthorizationResponse()` in the browser to read it.
 
 ```
-GET http://localhost/verify_vp_token#vp_token=eyJwcm9vZl9pZF9...
+GET https://example.com/verify_vp_token#vp_token=eyJwcm9vZl9pZF9...
 ```
 
 #### direct_post
 
-Using `direct_post` the `vp_token` is returned in the JSON body of a POST request to the `callbackUri` from Proof to your website. See the [OID4VP specification](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#name-response-mode-direct_post) for more details.
+Using `direct_post` the `vp_token` is returned in the JSON body of a POST request to the `callbackUri` from Proof to your server. See the [OID4VP specification](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#name-response-mode-direct_post) for more details.
 
 ```
-POST http://localhost/verify_vp_token
+POST https://example.com/verify_vp_token
 { "vp_token": "eyJwcm9vZl9pZF9..." }
 ```
 
@@ -74,16 +152,23 @@ POST http://localhost/verify_vp_token
 
 Proof supports [Pushed Authorization Requests](https://datatracker.ietf.org/doc/html/rfc9126) (PAR).
 You may want to use this feature when using [Transaction Templates](#transaction-templates) to avoid hitting URL size limits.
-Note that PAR is available **only from the Node.js distribution**.
+PAR requires a `clientSecret` and is therefore available **only from `@proof.com/proof-vc-server`**.
 
 ```javascript
-init({
+import { createClient } from "@proof.com/proof-vc-server";
+
+const proof = createClient({
   environment: "sandbox",
   clientId: "caxdw5a7d",
   clientSecret: "…",
+  callbackUri: "https://example.com/verify_vp_token",
   responseMode: "direct_post",
-  callbackUri: "http://localhost/verify_vp_token",
   usePushedAuthorizationRequest: true,
+});
+
+const redirect = await proof.authorizationUrl({
+  nonce: "3e8e4918-e9fb-453a-a538-81152be15c1b",
+  scope: "urn:proof:params:scope:verifiable-credentials:basic",
 });
 ```
 
@@ -108,20 +193,7 @@ All attributes are selectively disclosable and will return `undefined` if the cl
 
 ### Request
 
-Request a Verifiable Credential Presentation with an [OAuth 2.0](https://datatracker.ietf.org/doc/html/rfc6749) Authorization Request:
-
-```javascript
-import { getAuthorizationRequestURL } from "@proof.com/proof-vc-common";
-
-const redirect = await getAuthorizationRequestURL({
-  nonce: "3e8e4918-e9fb-453a-a538-81152be15c1b",
-  scope: "urn:proof:params:scope:verifiable-credentials:basic",
-  state: "6A2B4CD830",
-  loginHint: "frodo.baggins@theshire",
-});
-
-window.location.href = redirect;
-```
+Request a Verifiable Credential Presentation with an [OAuth 2.0](https://datatracker.ietf.org/doc/html/rfc6749) Authorization Request. See [Frontend](#frontend-request-a-presentation) and [Backend](#backend-request-a-presentation) above for the two entry points.
 
 #### Scopes
 
@@ -138,15 +210,18 @@ Supported `scope` and their associated [Credential Type](#credential-type):
 _Transaction Templates_ allow you to bind specific data to a Verifiable Credential Presentation. Proof uses the [Transaction Data](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#name-transaction-data) parameter of the OID4VP specification.
 The data is shown to the user during the Presentation flow and the user signs it with a Key Binding JWT (KB-JWT). The KB-JWT is returned as part of the [Presentation](https://dev.proof.com/docs/sd-jwt-vc-format).
 
-The following _Transaction Templates_ are available:
+Transaction data is sensitive and is therefore attached **only from `@proof.com/proof-vc-server`**. The following _Transaction Templates_ are available:
 
 **urn:proof:params:vc:transaction-data:wire-instructions:v1**
 
 ```javascript
-import {
-  getAuthorizationRequestURL,
-  transactionData,
-} from "@proof.com/proof-vc-common";
+import { createClient, transactionData } from "@proof.com/proof-vc-server";
+
+const proof = createClient({
+  environment: "sandbox",
+  clientId: "verifier-demo",
+  callbackUri: "https://example.com/verify_vp_token",
+});
 
 const data = transactionData.wireInstructions({
   recipient: {
@@ -165,7 +240,7 @@ const data = transactionData.wireInstructions({
   currency: "USD",
   memo: "Invoice #2024-089",
 });
-const redirect = await getAuthorizationRequestURL({
+const redirect = await proof.authorizationUrl({
   nonce: "3e8e4918-e9fb-453a-a538-81152be15c1b",
   scope: "urn:proof:params:scope:verifiable-credentials:basic",
   state: "6A2B4CD830",
@@ -179,10 +254,13 @@ const redirect = await getAuthorizationRequestURL({
 **urn:proof:params:vc:transaction-data:payment-itemized:v1**
 
 ```javascript
-import {
-  getAuthorizationRequestURL,
-  transactionData,
-} from "@proof.com/proof-vc-common";
+import { createClient, transactionData } from "@proof.com/proof-vc-server";
+
+const proof = createClient({
+  environment: "sandbox",
+  clientId: "verifier-demo",
+  callbackUri: "https://example.com/verify_vp_token",
+});
 
 const data = transactionData.paymentItemized({
   title: "Drive Shaft",
@@ -193,7 +271,7 @@ const data = transactionData.paymentItemized({
     { quantity: 2, unit_cost: 11.4, label: "Fees" },
   ],
 });
-const redirect = await getAuthorizationRequestURL({
+const redirect = await proof.authorizationUrl({
   nonce: "3e8e4918-e9fb-453a-a538-81152be15c1b",
   scope: "urn:proof:params:scope:verifiable-credentials:basic",
   state: "6A2B4CD830",
@@ -207,10 +285,13 @@ const redirect = await getAuthorizationRequestURL({
 **urn:proof:params:vc:transaction-data:payment-mandate:v1**
 
 ```javascript
-import {
-  getAuthorizationRequestURL,
-  transactionData,
-} from "@proof.com/proof-vc-common";
+import { createClient, transactionData } from "@proof.com/proof-vc-server";
+
+const proof = createClient({
+  environment: "sandbox",
+  clientId: "verifier-demo",
+  callbackUri: "https://example.com/verify_vp_token",
+});
 
 const data = transactionData.paymentMandate({
   payment_instrument: {
@@ -228,7 +309,7 @@ const data = transactionData.paymentMandate({
   amount: 500,
   currency: "USD",
 });
-const redirect = await getAuthorizationRequestURL({
+const redirect = await proof.authorizationUrl({
   nonce: "3e8e4918-e9fb-453a-a538-81152be15c1b",
   scope: "urn:proof:params:scope:verifiable-credentials:basic",
   state: "6A2B4CD830",
@@ -239,15 +320,17 @@ const redirect = await getAuthorizationRequestURL({
 
 ### Verify
 
-Decode and verify a Verifiable Presentation's `vp_token` server-side:
+Verification runs server-side. Create a verifier bound to a trust root and reuse it.
+
+Decode and verify a Verifiable Presentation's `vp_token`:
 
 ```javascript
-import { init, verifyVPToken } from "@proof.com/proof-vc-common";
+import { createVerifier } from "@proof.com/proof-vc-server";
 
-init({ trustRoot: "production" });
+const verifier = createVerifier({ trustRoot: "production" });
 
 const vpToken = "eyJwcm9vZl9pZ...";
-const presentation = await verifyVPToken({ encodedVPToken: vpToken });
+const presentation = await verifier.verifyVPToken({ encodedVPToken: vpToken });
 const verifiableCredential = presentation["proof_id_default"][0];
 
 if (verifiableCredential.isOver18) {
@@ -260,12 +343,12 @@ if (verifiableCredential.isOver18) {
 Verify a single SD-JWT-VC:
 
 ```javascript
-import { init, verify } from "@proof.com/proof-vc-common";
+import { createVerifier } from "@proof.com/proof-vc-server";
 
-init({ trustRoot: "production" });
+const verifier = createVerifier({ trustRoot: "production" });
 
 const encodedSDJWT = "eyJraWQiOiI3...";
-const verifiableCredential = await verify({ encodedSDJWT });
+const verifiableCredential = await verifier.verify({ encodedSDJWT });
 
 if (verifiableCredential.isOver18) {
   purchaseItem();
@@ -279,7 +362,7 @@ if (verifiableCredential.isOver18) {
 Validating the `nonce` is out of scope of `verify` and `verifyVPToken`. The `nonce` signed in the Key Binding JWT is exposed on the returned credential and should be validated by the caller against the `nonce` sent in the [Request](#request):
 
 ```javascript
-const verifiableCredential = await verify({ encodedSDJWT });
+const verifiableCredential = await verifier.verify({ encodedSDJWT });
 
 if (
   verifiableCredential.getNonce() !== "3e8e4918-e9fb-453a-a538-81152be15c1b"
@@ -294,9 +377,9 @@ Proof's Verifiable Credentials are issued by our [Certificate Authority](https:/
 following the CA/B Forum Baseline Requirements for the Issuance and Management of Publicly-Trusted TLS Server Certificates published at https://www.cabforum.org.
 
 The Proof Root CA R1 Certificate is published at http://cert.proof.com/proof-root-ca-r1.crt and
-is also committed in this repository [proof-root-ca-r1.crt](src/certificates/trust_store/proof_root_ca_r1.ts).
+is also committed in this repository [proof-root-ca-r1.crt](packages/server/src/certificates/trust_store/proof_root_ca_r1.ts).
 
-The sandbox Root CA R1 Development certificate is also committed in this repository [proof-root-ca-r1-development.crt](src/certificates/trust_store/proof_root_ca_r1_development.ts) and used when `trustRoot: "development"`.
+The sandbox Root CA R1 Development certificate is also committed in this repository [proof-root-ca-r1-development.crt](packages/server/src/certificates/trust_store/proof_root_ca_r1_development.ts) and used when `trustRoot: "development"`.
 
 ## Documentation
 

@@ -34,18 +34,6 @@ jobs:
       - run: yarn install
       - run: yarn lint:check
 
-  typecheck:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - run: corepack enable
-      - uses: actions/setup-node@v6
-        with:
-          node-version-file: .node-version
-          cache: yarn
-      - run: yarn install
-      - run: yarn typecheck
-
   test-matrix:
     runs-on: ubuntu-latest
     strategy:
@@ -81,14 +69,8 @@ jobs:
           cache: yarn
       - run: yarn install
       - run: yarn build
-      - uses: actions/upload-artifact@v7
-        with:
-          name: dist
-          path: dist
-          retention-days: 1
 
   publint:
-    needs: build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -98,10 +80,5 @@ jobs:
           node-version-file: .node-version
           cache: yarn
       - run: yarn install
-      # publint resolves the package `exports` against the packed tarball, which
-      # references ./dist/*. Reuse the build job's output instead of rebuilding.
-      - uses: actions/download-artifact@v8
-        with:
-          name: dist
-          path: dist
+      - run: yarn build
       - run: yarn publint

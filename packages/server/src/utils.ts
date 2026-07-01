@@ -1,5 +1,7 @@
-import type { CredentialID } from "./types.ts";
-import { DEFAULT_CREDENTIAL_ID } from "./constants.ts";
+import {
+  type CredentialID,
+  DEFAULT_CREDENTIAL_ID,
+} from "@proof.com/proof-vc-common";
 
 const CREDENTIAL_IDS: CredentialID[] = [DEFAULT_CREDENTIAL_ID];
 
@@ -9,5 +11,5 @@ export const credentialIdAsType = (s: string): CredentialID => {
       return credentialId;
     }
   }
-  throw `invalid CredentialID: ${s}`;
+  throw new Error(`invalid CredentialID: ${s}`);
 };
