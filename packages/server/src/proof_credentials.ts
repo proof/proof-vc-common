@@ -1,4 +1,5 @@
-import type { CredentialType, Format, ProofCredential } from "./types.ts";
+import type { CredentialType, Format } from "@proof.com/proof-vc-common";
+import type { ProofCredential } from "./types.ts";
 import type { SDJwt } from "@sd-jwt/core";
 
 export type { ProofCredential } from "./types.ts";

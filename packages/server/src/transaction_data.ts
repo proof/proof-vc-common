@@ -1,4 +1,4 @@
-import { DEFAULT_CREDENTIAL_ID } from "./constants.ts";
+import { DEFAULT_CREDENTIAL_ID } from "@proof.com/proof-vc-common";
 
 export const TX_DATA_TYPE = {
   WIRE_INSTRUCTIONS:

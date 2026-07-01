@@ -4,7 +4,7 @@ import {
   ProofCredentialV1,
 } from "./proof_credentials.ts";
 import { hasher } from "@owf/crypto";
-import { PROOF_CREDENTIAL_V1_VCT } from "./constants.ts";
+import { PROOF_CREDENTIAL_V1_VCT } from "@proof.com/proof-vc-common";
 
 export const getProofCredential = async (
   sdjwt: SDJwt,
@@ -41,6 +41,6 @@ export const getProofCredential = async (
       }),
     });
   } else {
-    throw `unknown ProofCredential for vct: ${vct}`;
+    throw new Error(`unknown ProofCredential for vct: ${vct}`);
   }
 };

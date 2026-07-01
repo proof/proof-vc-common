@@ -1,4 +1,8 @@
-export type * from "./types.ts";
+export * from "@proof.com/proof-vc-common";
+
+export { ProofCredentialV1 } from "./proof_credentials.ts";
+export type { ProofCredential, VPToken, TrustRoot } from "./types.ts";
+
 export type {
   TransactionData,
   WireInstructionsTransactionData,
@@ -11,34 +15,21 @@ export type {
   PaymentItemizedItem,
   SessionDataPayload,
 } from "./transaction_data.ts";
-
 export { TX_DATA_TYPE, transactionData } from "./transaction_data.ts";
 
 export type {
-  DCQLQuery,
-  DCQLCredentialQuery,
-  DCQLCredentialQueryMeta,
-} from "./dcql.ts";
-
-export { DCQL_QUERY_BASIC } from "./dcql.ts";
-
-export { ProofCredentialV1 } from "./proof_credentials.ts";
-
-export type {
-  AuthorizationRequestParams,
+  ServerClientConfig,
+  ServerAuthorizationRequestParams,
+  ServerVCClient,
   DCAPIAuthorizationRequestParams,
   AuthorizationRequest,
-} from "./presentation/base_client.ts";
+} from "./client.ts";
+export { createClient } from "./client.ts";
+
 export type {
-  NodeInitParams,
+  VerifierConfig,
   VerifyParams,
   VerifyVPTokenParams,
-} from "./presentation/node_client.ts";
-
-export {
-  init,
-  getAuthorizationRequestURL,
-  getDCAPIAuthorizationRequest,
-  verify,
-  verifyVPToken,
-} from "./vc_presentation.node.ts";
+  Verifier,
+} from "./verifier.ts";
+export { createVerifier } from "./verifier.ts";

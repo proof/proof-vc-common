@@ -1,0 +1,57 @@
+{
+  "name": "@proof.com/proof-vc-server",
+  "version": "0.3.0",
+  "description": "A digital passport, verified once, usable everywhere.",
+  "keywords": [
+    "VC",
+    "Verifiable Credentials",
+    "OID4VCI",
+    "OID4VCP",
+    "SD-JWT-VC",
+    "Selective Disclosures",
+    "Proof",
+    "Proof.com",
+    "OAuth"
+  ],
+  "homepage": "https://github.com/proof/proof-vc-common",
+  "bugs": "https://github.com/proof/proof-vc-common/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/proof/proof-vc-common.git",
+    "directory": "packages/server"
+  },
+  "license": "Apache-2.0",
+  "author": "Jeremie Charrier <jeremie.charrier@proof.com>",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "publint": "publint --pack npm",
+    "test": "tsc -b && node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "@owf/crypto": "^0.3.0",
+    "@owf/identity-common": "^0.3.0",
+    "@proof.com/proof-vc-common": "^0.3.0",
+    "@sd-jwt/core": "^0.19.0",
+    "@sd-jwt/sd-jwt-vc": "^0.19.0"
+  },
+  "devDependencies": {
+    "publint": "^0.3.21",
+    "typescript": "^6.0.3"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
