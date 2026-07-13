@@ -1,9 +1,5 @@
 export type Environment =
-  | "localhost"
-  | "next"
-  | "staging"
-  | "sandbox"
-  | "production";
+  "localhost" | "next" | "staging" | "sandbox" | "production";
 export type ResponseMode = "fragment" | "direct_post";
 export type ResponseType = "vp_token";
 export type Scope = "urn:proof:params:scope:verifiable-credentials:basic";
