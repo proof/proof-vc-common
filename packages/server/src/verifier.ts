@@ -1,7 +1,7 @@
 import { X509Certificate } from "node:crypto";
 import { Buffer } from "node:buffer";
 import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
-import type { JwtPayload } from "@sd-jwt/types";
+import type { JwtPayload } from "@sd-jwt/core";
 import { ES256, ES384, ES512, hasher } from "@owf/crypto";
 import { base64urlDecode } from "@owf/identity-common";
 
