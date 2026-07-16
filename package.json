@@ -20,14 +20,14 @@
     "test": "yarn workspaces foreach --all --no-private run test"
   },
   "devDependencies": {
-    "@types/node": "^24.13.2",
+    "@types/node": "^24.13.3",
     "eslint": "^10.6.0",
     "eslint-plugin-unused-imports": "^4.4.1",
     "prettier": "^3.9.4",
     "prettier-plugin-packagejson": "^3.0.2",
     "publint": "^0.3.21",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.62.1"
+    "typescript-eslint": "^8.63.0"
   },
   "packageManager": "yarn@4.17.0",
   "engines": {
