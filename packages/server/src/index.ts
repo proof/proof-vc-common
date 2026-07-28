@@ -19,10 +19,12 @@ export { TX_DATA_TYPE, transactionData } from "./transaction_data.ts";
 
 export type {
   ServerClientConfig,
+  PrivateKeyFactory,
   ServerAuthorizationRequestParams,
   ServerVCClient,
   DCAPIAuthorizationRequestParams,
-  AuthorizationRequest,
+  DCAPIAuthorizationRequest,
+  JarByReferenceParams,
 } from "./client.ts";
 export { createClient } from "./client.ts";
 

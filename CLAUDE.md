@@ -3,7 +3,7 @@
 A Yarn 4 monorepo publishing two ESM TypeScript packages:
 
 - **`@proof.com/proof-vc-common`** (`packages/common`) — public/frontend, runs in the browser **and** Node, **zero runtime deps**. Builds OID4VP Authorization Request URLs (`createClient` / `buildAuthorizationUrl`) and reads the `vp_token` from the redirect (`parseAuthorizationResponse`). No secrets, no `nonce` generation, no transaction data.
-- **`@proof.com/proof-vc-server`** (`packages/server`) — privileged/backend, **Node only**. Adds `verify` / `verifyVPToken` (SD-JWT-VC verification, X.509 chain validation against an embedded trust root), Pushed Authorization Requests, transaction data, and DC API requests. Depends on `proof-vc-common` and **re-exports it**, so backend integrators need one import. Yarn links it locally via transparent workspaces.
+- **`@proof.com/proof-vc-server`** (`packages/server`) — privileged/backend, **Node only**. Adds `verify` / `verifyVPToken` (SD-JWT-VC verification, X.509 chain validation against an embedded trust root), Pushed Authorization Requests, JWT-Secured Authorization Requests (RFC 9101 / "JAR", by value and by reference), transaction data, and signed DC API requests. Depends on `proof-vc-common` and **re-exports it**, so backend integrators need one import. Yarn links it locally via transparent workspaces.
 
 `server` reuses `common`'s URL/param builders via the `@proof.com/proof-vc-common/internal` subpath export (server-only; not public frontend surface).
 
@@ -29,7 +29,7 @@ Versioning is **lockstep**: both packages always share one version, published to
 `packages/server/src` (Node only):
 
 - `index.ts` — `export * from "@proof.com/proof-vc-common"` then the server surface (its `createClient` intentionally shadows the frontend one)
-- `client.ts` — server `createClient` (PAR, `transactionData`, `dcApiRequest`); `authorizationUrl` is `async` (PAR fetches)
+- `client.ts` — server `createClient` (PAR, `transactionData`, RFC 9101 JAR signing via `jose`: `authorizationUrl` by value, `signedAuthorizationRequest` + `jarByReferenceAuthorizationUrl` by reference, `signedDcApiRequest`); `authorizationUrl` is `async` (PAR fetches + JAR signing). Secured requests need `useSecuredAuthorizationRequest: true` and a `privateKeyFactory` (ES256 JWK); `aud` is the AS `issuer` fetched from `AS_METADATA_URL`
 - `verifier.ts` — `createVerifier` → `verify` / `verifyVPToken`
 - `transaction_data.ts`, `proof_credentials.ts`, `proof_credential_factory.ts`, `utils.ts`, `types.ts` (`ProofCredential`/`VPToken`/`TrustRoot`), `certificates/**`
 
