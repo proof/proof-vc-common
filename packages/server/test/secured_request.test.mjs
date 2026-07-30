@@ -14,7 +14,7 @@ const CLIENT_ID = "https://verifier.example.com";
 const CALLBACK_URI = "https://verifier.example.com/callback";
 const ISSUER = "https://api.proof.com";
 const AS_METADATA_URL =
-  "https://api.proof.com/.well-known/oauth-authorization-server/verifiable-credentials/v1/issuance";
+  "https://api.proof.com/.well-known/oauth-authorization-server/verifiable-credentials/v1/presentation";
 
 const { publicKey, privateKey } = await generateKeyPair("ES256", {
   extractable: true,

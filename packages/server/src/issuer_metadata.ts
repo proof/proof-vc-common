@@ -2,7 +2,7 @@ import { resolveBaseUrl } from "@proof.com/proof-vc-common/internal";
 import type { ServerClientConfig } from "./client.ts";
 
 const AS_METADATA_URL =
-  "/.well-known/oauth-authorization-server/verifiable-credentials/v1/issuance";
+  "/.well-known/oauth-authorization-server/verifiable-credentials/v1/presentation";
 
 export async function authorizationServerIssuer(
   config: ServerClientConfig,
