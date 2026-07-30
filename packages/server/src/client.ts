@@ -8,14 +8,20 @@ import {
   type AuthorizationRequestParams,
 } from "@proof.com/proof-vc-common/internal";
 import type { DCQLQuery } from "@proof.com/proof-vc-common";
+import type { JWK } from "jose";
 import {
   encodeTransactionData,
   type TransactionData,
 } from "./transaction_data.ts";
+import { signRequestObject, requestObjectClaims } from "./secured_request.ts";
+
+export type PrivateKeyFactory = () => JWK | Promise<JWK>;
 
 export type ServerClientConfig = ClientConfig & {
   clientSecret?: string;
   usePushedAuthorizationRequest?: boolean;
+  useSecuredAuthorizationRequest?: boolean;
+  privateKeyFactory?: PrivateKeyFactory;
 };
 
 export type ServerAuthorizationRequestParams = AuthorizationRequestParams & {
@@ -28,7 +34,8 @@ export type DCAPIAuthorizationRequestParams = {
   transactionData?: TransactionData | string;
 };
 
-export type AuthorizationRequest = {
+export type DCAPIAuthorizationRequest = {
+  client_id: string;
   response_type: typeof RESPONSE_TYPE;
   response_mode: "dc_api";
   nonce: string;
@@ -36,9 +43,17 @@ export type AuthorizationRequest = {
   transaction_data?: string[];
 };
 
+export type JarByReferenceParams = {
+  requestUri: string;
+};
+
 export interface ServerVCClient {
   authorizationUrl(params: ServerAuthorizationRequestParams): Promise<string>;
-  dcApiRequest(params: DCAPIAuthorizationRequestParams): AuthorizationRequest;
+  signedAuthorizationRequest(
+    params: ServerAuthorizationRequestParams,
+  ): Promise<string>;
+  signedDcApiRequest(params: DCAPIAuthorizationRequestParams): Promise<string>;
+  jarByReferenceAuthorizationUrl(params: JarByReferenceParams): string;
 }
 
 function encodeTxData(
@@ -54,14 +69,17 @@ export function createClient(config: ServerClientConfig): ServerVCClient {
     params: ServerAuthorizationRequestParams,
   ): URLSearchParams {
     const search = buildAuthorizationSearchParams(config, params);
-    if (config.clientSecret !== undefined) {
-      search.set("client_secret", config.clientSecret);
-    }
     const encoded = encodeTxData(params.transactionData);
     if (encoded !== undefined) {
       search.set("transaction_data", encoded);
     }
     return search;
+  }
+
+  function signedRequest(
+    params: ServerAuthorizationRequestParams,
+  ): Promise<string> {
+    return signRequestObject(config, requestObjectClaims(buildParams(params)));
   }
 
   async function pushAuthorizationRequest(
@@ -72,6 +90,7 @@ export function createClient(config: ServerClientConfig): ServerVCClient {
         "pushed authorization requests require `clientSecret` in the client config",
       );
     }
+    search.set("client_secret", config.clientSecret);
     const parURL = new URL(
       `${OID4VP_URI}/par`,
       resolveBaseUrl(config.environment),
@@ -108,24 +127,56 @@ export function createClient(config: ServerClientConfig): ServerVCClient {
     async authorizationUrl(
       params: ServerAuthorizationRequestParams,
     ): Promise<string> {
-      const search = buildParams(params);
+      const search =
+        config.useSecuredAuthorizationRequest === true
+          ? new URLSearchParams({
+              client_id: config.clientId,
+              request: await signedRequest(params),
+            })
+          : buildParams(params);
       return config.usePushedAuthorizationRequest === true
         ? pushAuthorizationRequest(search)
         : authorizeUrlFromSearchParams(config.environment, search);
     },
-    dcApiRequest({
+
+    signedAuthorizationRequest(
+      params: ServerAuthorizationRequestParams,
+    ): Promise<string> {
+      return signedRequest(params);
+    },
+
+    signedDcApiRequest({
       dcqlQuery,
       nonce,
       transactionData,
-    }: DCAPIAuthorizationRequestParams): AuthorizationRequest {
+    }: DCAPIAuthorizationRequestParams): Promise<string> {
       const encoded = encodeTxData(transactionData);
-      return {
+      const request: DCAPIAuthorizationRequest = {
+        client_id: config.clientId,
         response_type: RESPONSE_TYPE,
         response_mode: "dc_api",
         nonce,
         dcql_query: dcqlQuery,
         ...(encoded !== undefined && { transaction_data: [encoded] }),
       };
+      return signRequestObject(config, { ...request });
+    },
+
+    jarByReferenceAuthorizationUrl({
+      requestUri,
+    }: JarByReferenceParams): string {
+      if (config.usePushedAuthorizationRequest === true) {
+        throw new Error(
+          "JAR by reference cannot be combined with pushed authorization requests",
+        );
+      }
+      return authorizeUrlFromSearchParams(
+        config.environment,
+        new URLSearchParams({
+          client_id: config.clientId,
+          request_uri: requestUri,
+        }),
+      );
     },
   };
 }

@@ -15,6 +15,7 @@ Read our [documentation](https://dev.proof.com/docs/digital-credentials-overview
   - [Server Side](#server-side)
   - [Response Modes](#response-modes)
   - [Pushed Authorization Requests](#pushed-authorization-requests)
+  - [Secured Authorization Requests](#secured-authorization-requests)
 - [Verifiable Credential Presentation](#verifiable-credential-presentation)
   - [Credential Types](#credential-type)
   - [Request](#request)
@@ -28,10 +29,10 @@ Read our [documentation](https://dev.proof.com/docs/digital-credentials-overview
 
 ## Packages
 
-| Package                                             | Runtime             | Usage                                                                                                      | Runtime deps |
-| --------------------------------------------------- | ------------------- | ---------------------------------------------------------------------------------------------------------- | ------------ |
-| **[`@proof.com/proof-vc-common`](packages/common)** | browser **or** Node | Request a Verifiable Presentation                                                                          | **0** ✅     |
-| **[`@proof.com/proof-vc-server`](packages/server)** | Node                | `proof-vc-common` **plus** Presentation Verification, Pushed Authorization Requests, Transaction Templates | sd-jwt, owf  |
+| Package                                             | Runtime             | Usage                                                                                                                                            | Runtime deps      |
+| --------------------------------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------- |
+| **[`@proof.com/proof-vc-common`](packages/common)** | browser **or** Node | Request a Verifiable Presentation                                                                                                                | **0** ✅          |
+| **[`@proof.com/proof-vc-server`](packages/server)** | Node                | `proof-vc-common` **plus** Presentation Verification, Pushed Authorization Requests, Secured Authorization Requests (JAR), Transaction Templates | sd-jwt, owf, jose |
 
 ## Installation
 
@@ -169,6 +170,63 @@ const proof = createClient({
 const redirect = await proof.authorizationUrl({
   nonce: "3e8e4918-e9fb-453a-a538-81152be15c1b",
   scope: "urn:proof:params:scope:verifiable-credentials:basic",
+});
+```
+
+### Secured Authorization Requests
+
+Proof supports [JWT-Secured Authorization Requests](https://datatracker.ietf.org/doc/html/rfc9101) (JAR): the Authorization Request parameters are sent as a single signed JWT ("request object") instead of plain query parameters.
+JAR is available **only from `@proof.com/proof-vc-server`** and requires:
+
+- `useSecuredAuthorizationRequest: true`
+- a `privateKeyFactory` returning your EC private key as a JWK
+
+#### By value
+
+`authorizationUrl` signs the request object and embeds it in the `request` parameter. It can be combined with [Pushed Authorization Requests](#pushed-authorization-requests).
+
+```javascript
+import { createClient } from "@proof.com/proof-vc-server";
+
+const proof = createClient({
+  environment: "sandbox",
+  clientId: "caxdw5a7d",
+  callbackUri: "https://example.com/verify_vp_token",
+  responseMode: "direct_post",
+  useSecuredAuthorizationRequest: true,
+  privateKeyFactory: () => myPrivateKeyJwk,
+});
+
+const redirect = await proof.authorizationUrl({
+  nonce: "3e8e4918-e9fb-453a-a538-81152be15c1b",
+  scope: "urn:proof:params:scope:verifiable-credentials:basic",
+});
+```
+
+#### By reference
+
+If you'd rather host the request object yourself, use `signedAuthorizationRequest` to obtain the signed JWT, store it on your backend, then hand Proof a `request_uri` pointing at it with `jarByReferenceAuthorizationUrl`.
+JAR by reference cannot be combined with Pushed Authorization Requests.
+
+```javascript
+const jar = await proof.signedAuthorizationRequest({
+  nonce: "3e8e4918-e9fb-453a-a538-81152be15c1b",
+  scope: "urn:proof:params:scope:verifiable-credentials:basic",
+});
+
+const redirect = proof.jarByReferenceAuthorizationUrl({
+  requestUri: "https://example.com/jar/42",
+});
+```
+
+#### Digital Credentials API
+
+For the [W3C Digital Credentials API](https://www.w3.org/TR/digital-credentials/) (`dc_api` response mode), `signedDcApiRequest` returns a signed request object you pass to `navigator.credentials.get`.
+
+```javascript
+const request = await proof.signedDcApiRequest({
+  nonce: "3e8e4918-e9fb-453a-a538-81152be15c1b",
+  dcqlQuery: DCQL_QUERY_BASIC,
 });
 ```
 

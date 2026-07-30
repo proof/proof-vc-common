@@ -221,6 +221,7 @@ __metadata:
     "@proof.com/proof-vc-common": "npm:0.3.1"
     "@sd-jwt/core": "npm:^0.20.0"
     "@sd-jwt/sd-jwt-vc": "npm:^0.20.0"
+    jose: "npm:^6.2.3"
     publint: "npm:^0.3.21"
     typescript: "npm:^6.0.3"
   languageName: unknown
@@ -869,6 +870,13 @@ __metadata:
   version: 4.0.0
   resolution: "isexe@npm:4.0.0"
   checksum: 10c0/5884815115bceac452877659a9c7726382531592f43dc29e5d48b7c4100661aed54018cb90bd36cb2eaeba521092570769167acbb95c18d39afdccbcca06c5ce
+  languageName: node
+  linkType: hard
+
+"jose@npm:^6.2.3":
+  version: 6.2.3
+  resolution: "jose@npm:6.2.3"
+  checksum: 10c0/aa91bccba22cc84d86308f833749bcb0b00441e35c24e0ac79abeac5f76dc62d47bdef9c1da6a0c609f5da6478595f52b252085888b89dbdb163861e40ea4188
   languageName: node
   linkType: hard
 
