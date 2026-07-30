@@ -43,10 +43,10 @@
     "@proof.com/proof-vc-common": "0.3.1",
     "@sd-jwt/core": "^0.20.0",
     "@sd-jwt/sd-jwt-vc": "^0.20.0",
-    "jose": "^6.2.3"
+    "jose": "^6.2.4"
   },
   "devDependencies": {
-    "publint": "^0.3.21",
+    "publint": "^0.3.22",
     "typescript": "^6.0.3"
   },
   "engines": {
