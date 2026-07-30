@@ -112,7 +112,7 @@ Prompt before publishing (Hard Rule 2).
 1. Bump on a branch (the tag is created by `gh release create` in step 4):
    ```bash
    git switch -c release-X.Y.Z origin/main
-   npm version X.Y.Z --workspaces --no-git-tag-version --no-package-lock
+   npm version X.Y.Z --workspaces --include-workspace-root --no-git-tag-version --no-package-lock
    npm pkg set "dependencies[@proof.com/proof-vc-common]=X.Y.Z" -w packages/server --no-package-lock
    yarn install --no-immutable   # refresh yarn.lock for the bumped versions/range
    git commit -am "Release X.Y.Z"
