@@ -69,6 +69,8 @@ test("signedDcApiRequest returns a JAR with the expected header and claims", asy
     const jwt = await client.signedDcApiRequest({
       dcqlQuery: DCQL_QUERY_BASIC,
       nonce: "nonce-123",
+      state: "state-xyz",
+      loginHint: "user@example.com",
       expectedOrigins: ["https://verifier.example.com"],
     });
 
@@ -92,6 +94,40 @@ test("signedDcApiRequest returns a JAR with the expected header and claims", asy
     assert.deepEqual(payload.expected_origins, [
       "https://verifier.example.com",
     ]);
+    assert.equal(payload.state, "state-xyz");
+    assert.equal(payload.login_hint, "user@example.com");
+    assert.equal(payload.scope, undefined);
+  });
+});
+
+test("signedDcApiRequest supports a scope-based request", async () => {
+  await withStubbedFetch(async () => {
+    const client = securedClient();
+    const jwt = await client.signedDcApiRequest({
+      scope: "openid",
+      nonce: "nonce-123",
+      expectedOrigins: ["https://verifier.example.com"],
+    });
+
+    const { payload } = await jwtVerify(jwt, publicKey);
+    assert.equal(payload.scope, "openid");
+    assert.equal(payload.dcql_query, undefined);
+    assert.equal(payload.response_uri, CALLBACK_URI);
+  });
+});
+
+test("signedDcApiRequest rejects supplying both scope and dcqlQuery", async () => {
+  await withStubbedFetch(async () => {
+    const client = securedClient();
+    await assert.rejects(
+      client.signedDcApiRequest({
+        scope: "openid",
+        dcqlQuery: DCQL_QUERY_BASIC,
+        nonce: "nonce-123",
+        expectedOrigins: ["https://verifier.example.com"],
+      }),
+      /exactly one of `scope` or `dcqlQuery`/,
+    );
   });
 });
 

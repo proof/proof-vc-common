@@ -44,16 +44,23 @@ export function resolveBaseUrl(environment: Environment): string {
   }
 }
 
+export function assertScopeOrDcql(params: {
+  scope: Scope | undefined;
+  dcqlQuery: DCQLQuery | undefined;
+}): void {
+  if ((params.scope === undefined) === (params.dcqlQuery === undefined)) {
+    throw new Error(
+      "authorization request requires exactly one of `scope` or `dcqlQuery`",
+    );
+  }
+}
+
 export function buildAuthorizationSearchParams(
   config: ClientConfig,
   params: AuthorizationRequestParams,
 ): URLSearchParams {
   const { scope, dcqlQuery, nonce, state, loginHint } = params;
-  if ((scope === undefined) === (dcqlQuery === undefined)) {
-    throw new Error(
-      "authorization request requires exactly one of `scope` or `dcqlQuery`",
-    );
-  }
+  assertScopeOrDcql({ scope, dcqlQuery });
   const responseMode = config.responseMode ?? DEFAULT_RESPONSE_MODE;
   return new URLSearchParams({
     client_id: config.clientId,
