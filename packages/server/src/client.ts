@@ -31,14 +31,14 @@ export type ServerAuthorizationRequestParams = AuthorizationRequestParams & {
 
 export type DCAPIAuthorizationRequestParams =
   ServerAuthorizationRequestParams & {
-    expectedOrigins: [string, ...string[]];
+    expectedOrigins?: [string, ...string[]];
   };
 
 export type DCAPIAuthorizationRequest = {
   client_id: string;
   response_type: typeof RESPONSE_TYPE;
   response_mode: "dc_api";
-  response_uri: string;
+  response_uri?: string;
   nonce: string;
   expected_origins: [string, ...string[]];
   scope?: Scope;
@@ -159,7 +159,7 @@ export function createClient(config: ServerClientConfig): ServerVCClient {
       expectedOrigins,
       transactionData,
     }: DCAPIAuthorizationRequestParams): Promise<string> {
-      if (expectedOrigins.length === 0) {
+      if (expectedOrigins !== undefined && expectedOrigins.length === 0) {
         throw new Error("`expectedOrigins` must be a non-empty array");
       }
       assertScopeOrDcql({ scope, dcqlQuery });
@@ -168,9 +168,11 @@ export function createClient(config: ServerClientConfig): ServerVCClient {
         client_id: config.clientId,
         response_type: RESPONSE_TYPE,
         response_mode: "dc_api",
-        response_uri: config.callbackUri,
         nonce,
-        expected_origins: expectedOrigins,
+        expected_origins: expectedOrigins ?? [""],
+        ...(expectedOrigins === undefined && {
+          response_uri: config.callbackUri,
+        }),
         ...(scope !== undefined && { scope }),
         ...(dcqlQuery !== undefined && { dcql_query: dcqlQuery }),
         ...(state !== undefined && { state }),
