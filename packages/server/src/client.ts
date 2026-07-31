@@ -4,10 +4,11 @@ import {
   resolveBaseUrl,
   buildAuthorizationSearchParams,
   authorizeUrlFromSearchParams,
+  assertScopeOrDcql,
   type ClientConfig,
   type AuthorizationRequestParams,
 } from "@proof.com/proof-vc-common/internal";
-import type { DCQLQuery } from "@proof.com/proof-vc-common";
+import type { DCQLQuery, Scope } from "@proof.com/proof-vc-common";
 import type { JWK } from "jose";
 import {
   encodeTransactionData,
@@ -28,12 +29,10 @@ export type ServerAuthorizationRequestParams = AuthorizationRequestParams & {
   transactionData?: TransactionData | string;
 };
 
-export type DCAPIAuthorizationRequestParams = {
-  dcqlQuery: DCQLQuery;
-  nonce: string;
-  expectedOrigins: [string, ...string[]];
-  transactionData?: TransactionData | string;
-};
+export type DCAPIAuthorizationRequestParams =
+  ServerAuthorizationRequestParams & {
+    expectedOrigins: [string, ...string[]];
+  };
 
 export type DCAPIAuthorizationRequest = {
   client_id: string;
@@ -41,8 +40,11 @@ export type DCAPIAuthorizationRequest = {
   response_mode: "dc_api";
   response_uri: string;
   nonce: string;
-  dcql_query: DCQLQuery;
   expected_origins: [string, ...string[]];
+  scope?: Scope;
+  dcql_query?: DCQLQuery;
+  state?: string;
+  login_hint?: string;
   transaction_data?: string[];
 };
 
@@ -149,14 +151,18 @@ export function createClient(config: ServerClientConfig): ServerVCClient {
     },
 
     async signedDcApiRequest({
+      scope,
       dcqlQuery,
       nonce,
+      state,
+      loginHint,
       expectedOrigins,
       transactionData,
     }: DCAPIAuthorizationRequestParams): Promise<string> {
       if (expectedOrigins.length === 0) {
         throw new Error("`expectedOrigins` must be a non-empty array");
       }
+      assertScopeOrDcql({ scope, dcqlQuery });
       const encoded = encodeTxData(transactionData);
       const request: DCAPIAuthorizationRequest = {
         client_id: config.clientId,
@@ -164,8 +170,11 @@ export function createClient(config: ServerClientConfig): ServerVCClient {
         response_mode: "dc_api",
         response_uri: config.callbackUri,
         nonce,
-        dcql_query: dcqlQuery,
         expected_origins: expectedOrigins,
+        ...(scope !== undefined && { scope }),
+        ...(dcqlQuery !== undefined && { dcql_query: dcqlQuery }),
+        ...(state !== undefined && { state }),
+        ...(loginHint !== undefined && { login_hint: loginHint }),
         ...(encoded !== undefined && { transaction_data: [encoded] }),
       };
       return signRequestObject(config, { ...request });
