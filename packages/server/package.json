@@ -1,6 +1,6 @@
 {
   "name": "@proof.com/proof-vc-server",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "A digital passport, verified once, usable everywhere.",
   "keywords": [
     "VC",
@@ -40,7 +40,7 @@
   "dependencies": {
     "@owf/crypto": "^0.3.2",
     "@owf/identity-common": "^0.3.2",
-    "@proof.com/proof-vc-common": "0.4.0",
+    "@proof.com/proof-vc-common": "0.4.1",
     "@sd-jwt/core": "^0.20.0",
     "@sd-jwt/sd-jwt-vc": "^0.20.0",
     "jose": "^6.2.4"
