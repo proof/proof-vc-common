@@ -203,7 +203,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@proof.com/proof-vc-common@npm:0.4.0, @proof.com/proof-vc-common@workspace:packages/common":
+"@proof.com/proof-vc-common@npm:0.4.1, @proof.com/proof-vc-common@workspace:packages/common":
   version: 0.0.0-use.local
   resolution: "@proof.com/proof-vc-common@workspace:packages/common"
   dependencies:
@@ -218,7 +218,7 @@ __metadata:
   dependencies:
     "@owf/crypto": "npm:^0.3.2"
     "@owf/identity-common": "npm:^0.3.2"
-    "@proof.com/proof-vc-common": "npm:0.4.0"
+    "@proof.com/proof-vc-common": "npm:0.4.1"
     "@sd-jwt/core": "npm:^0.20.0"
     "@sd-jwt/sd-jwt-vc": "npm:^0.20.0"
     jose: "npm:^6.2.4"
