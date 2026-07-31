@@ -90,13 +90,27 @@ test("signedDcApiRequest returns a JAR with the expected header and claims", asy
     assert.equal(payload.response_mode, "dc_api");
     assert.equal(payload.nonce, "nonce-123");
     assert.deepEqual(payload.dcql_query, DCQL_QUERY_BASIC);
-    assert.equal(payload.response_uri, CALLBACK_URI);
     assert.deepEqual(payload.expected_origins, [
       "https://verifier.example.com",
     ]);
+    assert.equal(payload.response_uri, undefined);
     assert.equal(payload.state, "state-xyz");
     assert.equal(payload.login_hint, "user@example.com");
     assert.equal(payload.scope, undefined);
+  });
+});
+
+test("signedDcApiRequest omits expectedOrigins and includes response_uri", async () => {
+  await withStubbedFetch(async () => {
+    const client = securedClient();
+    const jwt = await client.signedDcApiRequest({
+      dcqlQuery: DCQL_QUERY_BASIC,
+      nonce: "nonce-123",
+    });
+
+    const { payload } = await jwtVerify(jwt, publicKey);
+    assert.equal(payload.response_uri, CALLBACK_URI);
+    assert.deepEqual(payload.expected_origins, [""]);
   });
 });
 
@@ -112,7 +126,7 @@ test("signedDcApiRequest supports a scope-based request", async () => {
     const { payload } = await jwtVerify(jwt, publicKey);
     assert.equal(payload.scope, "openid");
     assert.equal(payload.dcql_query, undefined);
-    assert.equal(payload.response_uri, CALLBACK_URI);
+    assert.equal(payload.response_uri, undefined);
   });
 });
 
