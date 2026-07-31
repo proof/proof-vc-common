@@ -31,6 +31,7 @@ export type ServerAuthorizationRequestParams = AuthorizationRequestParams & {
 export type DCAPIAuthorizationRequestParams = {
   dcqlQuery: DCQLQuery;
   nonce: string;
+  expectedOrigins: [string, ...string[]];
   transactionData?: TransactionData | string;
 };
 
@@ -38,8 +39,10 @@ export type DCAPIAuthorizationRequest = {
   client_id: string;
   response_type: typeof RESPONSE_TYPE;
   response_mode: "dc_api";
+  response_uri: string;
   nonce: string;
   dcql_query: DCQLQuery;
+  expected_origins: [string, ...string[]];
   transaction_data?: string[];
 };
 
@@ -145,18 +148,24 @@ export function createClient(config: ServerClientConfig): ServerVCClient {
       return signedRequest(params);
     },
 
-    signedDcApiRequest({
+    async signedDcApiRequest({
       dcqlQuery,
       nonce,
+      expectedOrigins,
       transactionData,
     }: DCAPIAuthorizationRequestParams): Promise<string> {
+      if (expectedOrigins.length === 0) {
+        throw new Error("`expectedOrigins` must be a non-empty array");
+      }
       const encoded = encodeTxData(transactionData);
       const request: DCAPIAuthorizationRequest = {
         client_id: config.clientId,
         response_type: RESPONSE_TYPE,
         response_mode: "dc_api",
+        response_uri: config.callbackUri,
         nonce,
         dcql_query: dcqlQuery,
+        expected_origins: expectedOrigins,
         ...(encoded !== undefined && { transaction_data: [encoded] }),
       };
       return signRequestObject(config, { ...request });

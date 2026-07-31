@@ -69,6 +69,7 @@ test("signedDcApiRequest returns a JAR with the expected header and claims", asy
     const jwt = await client.signedDcApiRequest({
       dcqlQuery: DCQL_QUERY_BASIC,
       nonce: "nonce-123",
+      expectedOrigins: ["https://verifier.example.com"],
     });
 
     assert.equal(calls.length, 1);
@@ -87,6 +88,24 @@ test("signedDcApiRequest returns a JAR with the expected header and claims", asy
     assert.equal(payload.response_mode, "dc_api");
     assert.equal(payload.nonce, "nonce-123");
     assert.deepEqual(payload.dcql_query, DCQL_QUERY_BASIC);
+    assert.equal(payload.response_uri, CALLBACK_URI);
+    assert.deepEqual(payload.expected_origins, [
+      "https://verifier.example.com",
+    ]);
+  });
+});
+
+test("signedDcApiRequest rejects an empty expectedOrigins array", async () => {
+  await withStubbedFetch(async () => {
+    const client = securedClient();
+    await assert.rejects(
+      client.signedDcApiRequest({
+        dcqlQuery: DCQL_QUERY_BASIC,
+        nonce: "nonce-123",
+        expectedOrigins: [],
+      }),
+      /`expectedOrigins` must be a non-empty array/,
+    );
   });
 });
 
@@ -211,7 +230,11 @@ test("signed methods require useSecuredAuthorizationRequest", async () => {
     privateKeyFactory: () => privateJwk,
   });
   await assert.rejects(
-    client.signedDcApiRequest({ dcqlQuery: DCQL_QUERY_BASIC, nonce: "n" }),
+    client.signedDcApiRequest({
+      dcqlQuery: DCQL_QUERY_BASIC,
+      nonce: "n",
+      expectedOrigins: ["https://verifier.example.com"],
+    }),
     /useSecuredAuthorizationRequest/,
   );
 });
@@ -224,7 +247,11 @@ test("signed methods require privateKeyFactory", async () => {
     useSecuredAuthorizationRequest: true,
   });
   await assert.rejects(
-    client.signedDcApiRequest({ dcqlQuery: DCQL_QUERY_BASIC, nonce: "n" }),
+    client.signedDcApiRequest({
+      dcqlQuery: DCQL_QUERY_BASIC,
+      nonce: "n",
+      expectedOrigins: ["https://verifier.example.com"],
+    }),
     /privateKeyFactory/,
   );
 });
