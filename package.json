@@ -21,7 +21,7 @@
   },
   "devDependencies": {
     "@types/node": "^24.13.3",
-    "eslint": "^10.7.0",
+    "eslint": "^10.8.0",
     "eslint-plugin-unused-imports": "^4.4.1",
     "prettier": "^3.9.6",
     "prettier-plugin-packagejson": "^3.0.2",
