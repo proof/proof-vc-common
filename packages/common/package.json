@@ -43,7 +43,7 @@
     "test": "tsc -b && node --test test/*.test.mjs"
   },
   "devDependencies": {
-    "publint": "^0.3.22",
+    "publint": "^0.3.23",
     "typescript": "^6.0.3"
   },
   "engines": {
