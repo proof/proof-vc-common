@@ -21,13 +21,13 @@
   },
   "devDependencies": {
     "@types/node": "^24.13.3",
-    "eslint": "^10.8.0",
+    "eslint": "^10.8.1",
     "eslint-plugin-unused-imports": "^4.4.1",
     "prettier": "^3.9.6",
     "prettier-plugin-packagejson": "^3.0.2",
     "publint": "^0.3.23",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.66.0"
+    "typescript-eslint": "^8.67.0"
   },
   "packageManager": "yarn@4.17.0",
   "engines": {
