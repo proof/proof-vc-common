@@ -121,3 +121,14 @@ test("rejects a chain that does not match the configured trust root", async () =
     "not issued by next in chain",
   );
 });
+
+test("verifyVPToken populates every credential id absent from the response", async () => {
+  const encodedVPToken = Buffer.from(JSON.stringify({}), "utf8").toString(
+    "base64url",
+  );
+  const vpToken = await development.verifyVPToken({ encodedVPToken });
+  assert.deepEqual(vpToken, {
+    proof_id_default: [],
+    proof_id_nationality_us: [],
+  });
+});

@@ -40,6 +40,19 @@ test("createClient builds a scope-based authorize URL (fragment default)", () =>
   );
 });
 
+test("createClient accepts the nationality scope", () => {
+  const url = new URL(
+    createClient(CONFIG).authorizationUrl({
+      nonce: "n-124",
+      scope: "urn:proof:params:scope:verifiable-credentials:nationality:us",
+    }),
+  );
+  assert.equal(
+    url.searchParams.get("scope"),
+    "urn:proof:params:scope:verifiable-credentials:nationality:us",
+  );
+});
+
 test("direct_post uses response_uri instead of redirect_uri", () => {
   const url = new URL(
     createClient({ ...CONFIG, responseMode: "direct_post" }).authorizationUrl({

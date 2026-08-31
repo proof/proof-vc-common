@@ -8,7 +8,11 @@ export type {
   Format,
 } from "./types.ts";
 
-export { DEFAULT_CREDENTIAL_ID, PROOF_CREDENTIAL_V1_VCT } from "./constants.ts";
+export {
+  DEFAULT_CREDENTIAL_ID,
+  NATIONALITY_US_CREDENTIAL_ID,
+  PROOF_CREDENTIAL_V1_VCT,
+} from "./constants.ts";
 
 export type {
   DCQLQuery,
