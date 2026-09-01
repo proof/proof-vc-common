@@ -41,6 +41,7 @@ type ProofCredentialV1Params = {
   is_over_18?: boolean;
   is_over_21?: boolean;
   is_over_65?: boolean;
+  is_national_us?: boolean;
 } & CredentialParams;
 
 export class ProofCredentialV1 extends Credential {
@@ -49,6 +50,7 @@ export class ProofCredentialV1 extends Credential {
   public readonly isOver18: boolean | undefined;
   public readonly isOver21: boolean | undefined;
   public readonly isOver65: boolean | undefined;
+  public readonly isNationalUS: boolean | undefined;
   private readonly birth_date: string | undefined;
 
   constructor(params: ProofCredentialV1Params) {
@@ -59,6 +61,7 @@ export class ProofCredentialV1 extends Credential {
     this.isOver18 = params.is_over_18;
     this.isOver21 = params.is_over_21;
     this.isOver65 = params.is_over_65;
+    this.isNationalUS = params.is_national_us;
   }
 
   public credentialType(): CredentialType {
@@ -75,3 +78,7 @@ export class ProofCredentialV1 extends Credential {
       : undefined;
   }
 }
+
+export const CREDENTIAL_CLASSES = {
+  ProofCredentialV1,
+} satisfies Record<CredentialType, unknown>;

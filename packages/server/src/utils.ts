@@ -1,13 +1,11 @@
-import {
-  type CredentialID,
-  DEFAULT_CREDENTIAL_ID,
-  NATIONALITY_US_CREDENTIAL_ID,
-} from "@proof.com/proof-vc-common";
+import type { CredentialID } from "@proof.com/proof-vc-common";
 
-export const CREDENTIAL_IDS: CredentialID[] = [
-  DEFAULT_CREDENTIAL_ID,
-  NATIONALITY_US_CREDENTIAL_ID,
-];
+const CREDENTIAL_ID_SET = {
+  proof_id_default: true,
+  proof_id_nationality_us: true,
+} satisfies Record<CredentialID, true>;
+
+export const CREDENTIAL_IDS = Object.keys(CREDENTIAL_ID_SET) as CredentialID[];
 
 export const credentialIdAsType = (s: string): CredentialID => {
   for (const credentialId of CREDENTIAL_IDS) {
