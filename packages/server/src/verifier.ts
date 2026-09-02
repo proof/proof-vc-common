@@ -6,7 +6,7 @@ import { ES256, ES384, ES512, hasher } from "@owf/crypto";
 import { base64urlDecode } from "@owf/identity-common";
 
 import type { ProofCredential, TrustRoot, VPToken } from "./types.ts";
-import { credentialIdAsType } from "./utils.ts";
+import { CREDENTIAL_IDS, credentialIdAsType } from "./utils.ts";
 import { getProofCredential } from "./proof_credential_factory.ts";
 import { verifyChain } from "./certificates/chain_validator.ts";
 import { getTrustRoot } from "./certificates/trust_store/index.ts";
@@ -136,10 +136,12 @@ export function createVerifier(config: VerifierConfig): Verifier {
       string[]
     >;
     const vpToken = {} as VPToken;
+    for (const credentialId of CREDENTIAL_IDS) {
+      vpToken[credentialId] = [];
+    }
 
     for (const [key, encodedSDJWTs] of Object.entries(records)) {
       const credentialId = credentialIdAsType(key);
-      vpToken[credentialId] = [];
       for (const encodedSDJWT of encodedSDJWTs) {
         const credential = await verify({
           encodedSDJWT,

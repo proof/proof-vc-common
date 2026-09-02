@@ -17,6 +17,10 @@ export const getProofCredential = async (
       claims["age_equal_or_over"] !== undefined
         ? (claims["age_equal_or_over"] as Record<string, boolean>)
         : undefined;
+    const national =
+      claims["is_national"] !== undefined
+        ? (claims["is_national"] as Record<string, boolean>)
+        : undefined;
 
     return new ProofCredentialV1({
       sdjwt,
@@ -38,6 +42,9 @@ export const getProofCredential = async (
       }),
       ...(ages?.["65"] !== undefined && {
         is_over_65: ages?.["65"] as boolean,
+      }),
+      ...(national?.["us"] !== undefined && {
+        is_national_us: national?.["us"] as boolean,
       }),
     });
   } else {

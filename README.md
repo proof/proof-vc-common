@@ -259,9 +259,10 @@ Proof supports the `scope` parameter of the [OID4VP specification](https://openi
 
 Supported `scope` and their associated [Credential Type](#credential-type):
 
-| scope                                                 | Credential Type     |
-| ----------------------------------------------------- | ------------------- |
-| `urn:proof:params:scope:verifiable-credentials:basic` | `ProofCredentialV1` |
+| scope                                                          | Credential Type     |
+| -------------------------------------------------------------- | ------------------- |
+| `urn:proof:params:scope:verifiable-credentials:basic`          | `ProofCredentialV1` |
+| `urn:proof:params:scope:verifiable-credentials:nationality:us` | `ProofCredentialV1` |
 
 #### Transaction Templates
 
