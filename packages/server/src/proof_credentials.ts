@@ -78,7 +78,7 @@ export class ProofCredentialV1 extends Credential {
       : undefined;
   }
 }
-
-export const CREDENTIAL_CLASSES = {
+// this definition is a compile time guard, `satisfies` fails typecheck if a `CredentialType` has no class
+const _CREDENTIAL_CLASSES = {
   ProofCredentialV1,
 } satisfies Record<CredentialType, unknown>;
