@@ -230,6 +230,24 @@ const request = await proof.signedDcApiRequest({
 });
 ```
 
+Set `expectedOrigins` to allow the DC API request to transit through an intermediate party (e.g. an AI-agent VM)
+or set the config `callbackUri` if the DC API request is processed by the User-Agent.
+
+```javascript
+const proof = createClient({
+  environment: "sandbox",
+  clientId: "caxdw5a7d",
+  useSecuredAuthorizationRequest: true,
+  privateKeyFactory: () => myPrivateKeyJwk,
+});
+
+const request = await proof.signedDcApiRequest({
+  nonce: "3e8e4918-e9fb-453a-a538-81152be15c1b",
+  dcqlQuery: DCQL_QUERY_BASIC,
+  expectedOrigins: ["https://ai-agent.com"],
+});
+```
+
 ## Verifiable Credential Presentation
 
 ### Credential Type
