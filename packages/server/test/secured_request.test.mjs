@@ -114,6 +114,54 @@ test("signedDcApiRequest omits expectedOrigins and includes response_uri", async
   });
 });
 
+test("signedDcApiRequest with expectedOrigins does not need callbackUri", async () => {
+  await withStubbedFetch(async () => {
+    const client = securedClient({ callbackUri: undefined });
+    const jwt = await client.signedDcApiRequest({
+      dcqlQuery: DCQL_QUERY_BASIC,
+      nonce: "nonce-123",
+      expectedOrigins: ["https://verifier.example.com"],
+    });
+
+    const { payload } = await jwtVerify(jwt, publicKey);
+    assert.deepEqual(payload.expected_origins, [
+      "https://verifier.example.com",
+    ]);
+    assert.equal(payload.response_uri, undefined);
+  });
+});
+
+test("signedDcApiRequest rejects missing expectedOrigins and callbackUri", async () => {
+  await withStubbedFetch(async () => {
+    const client = securedClient({ callbackUri: undefined });
+    await assert.rejects(
+      client.signedDcApiRequest({
+        dcqlQuery: DCQL_QUERY_BASIC,
+        nonce: "nonce-123",
+      }),
+      /requires either the `expectedOrigins` parameter or `callbackUri` client config/,
+    );
+  });
+});
+
+test("authorizationUrl and signedAuthorizationRequest require callbackUri", async () => {
+  const client = createClient({
+    environment: "production",
+    clientId: CLIENT_ID,
+  });
+  await assert.rejects(
+    client.authorizationUrl({ scope: "openid", nonce: "n" }),
+    /require `callbackUri`/,
+  );
+  await assert.rejects(
+    securedClient({ callbackUri: undefined }).signedAuthorizationRequest({
+      scope: "openid",
+      nonce: "n",
+    }),
+    /require `callbackUri`/,
+  );
+});
+
 test("signedDcApiRequest supports a scope-based request", async () => {
   await withStubbedFetch(async () => {
     const client = securedClient();

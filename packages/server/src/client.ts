@@ -18,7 +18,8 @@ import { signRequestObject, requestObjectClaims } from "./secured_request.ts";
 
 export type PrivateKeyFactory = () => JWK | Promise<JWK>;
 
-export type ServerClientConfig = ClientConfig & {
+export type ServerClientConfig = Omit<ClientConfig, "callbackUri"> & {
+  callbackUri?: string;
   clientSecret?: string;
   usePushedAuthorizationRequest?: boolean;
   useSecuredAuthorizationRequest?: boolean;
@@ -70,10 +71,23 @@ function encodeTxData(
 }
 
 export function createClient(config: ServerClientConfig): ServerVCClient {
+  function requireCallbackUri(requirement: string): string {
+    if (config.callbackUri === undefined) {
+      throw new Error(requirement);
+    }
+    return config.callbackUri;
+  }
+
   function buildParams(
     params: ServerAuthorizationRequestParams,
   ): URLSearchParams {
-    const search = buildAuthorizationSearchParams(config, params);
+    const callbackUri = requireCallbackUri(
+      "`authorizationUrl` and `signedAuthorizationRequest` require `callbackUri` in the client config",
+    );
+    const search = buildAuthorizationSearchParams(
+      { ...config, callbackUri },
+      params,
+    );
     const encoded = encodeTxData(params.transactionData);
     if (encoded !== undefined) {
       search.set("transaction_data", encoded);
@@ -81,7 +95,7 @@ export function createClient(config: ServerClientConfig): ServerVCClient {
     return search;
   }
 
-  function signedRequest(
+  async function signedRequest(
     params: ServerAuthorizationRequestParams,
   ): Promise<string> {
     return signRequestObject(config, requestObjectClaims(buildParams(params)));
@@ -171,7 +185,9 @@ export function createClient(config: ServerClientConfig): ServerVCClient {
         nonce,
         expected_origins: expectedOrigins ?? [""],
         ...(expectedOrigins === undefined && {
-          response_uri: config.callbackUri,
+          response_uri: requireCallbackUri(
+            "`signedDcApiRequest` requires either the `expectedOrigins` parameter or `callbackUri` client config",
+          ),
         }),
         ...(scope !== undefined && { scope }),
         ...(dcqlQuery !== undefined && { dcql_query: dcqlQuery }),
@@ -190,6 +206,7 @@ export function createClient(config: ServerClientConfig): ServerVCClient {
           "JAR by reference cannot be combined with pushed authorization requests",
         );
       }
+
       return authorizeUrlFromSearchParams(
         config.environment,
         new URLSearchParams({
