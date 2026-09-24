@@ -202,52 +202,52 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@noble/hashes@npm:^2.2.0":
-  version: 2.2.0
-  resolution: "@noble/hashes@npm:2.2.0"
-  checksum: 10c0/cad8630c504d6b9271984f685cd0af9101b40988fc2dfbe17ccdf068a9941f95cc5c9957d89e9ca4b7ca94c15cb35f93510c5d53a09fbcc83ee503b93d0a1034
+"@noble/hashes@npm:^2.4.0":
+  version: 2.4.0
+  resolution: "@noble/hashes@npm:2.4.0"
+  checksum: 10c0/f5820a38c52886073a69722a030688ad188bbacb822d01554545371259961c2b916266c57c013c2ce5a0d78aec977142fc68fd2a79be4c97b0644fcee9bb35f6
   languageName: node
   linkType: hard
 
-"@owf/cose@npm:0.3.2":
-  version: 0.3.2
-  resolution: "@owf/cose@npm:0.3.2"
+"@owf/cose@npm:0.4.0":
+  version: 0.4.0
+  resolution: "@owf/cose@npm:0.4.0"
   dependencies:
-    "@owf/identity-common": "npm:0.3.2"
-    cbor-x: "npm:^1.6.4"
-    zod: "npm:^4.4.3"
+    "@owf/identity-common": "npm:0.4.0"
+    cbor-x: "npm:^1.6.6"
+    zod: "npm:^4.6.5"
     zod-validation-error: "npm:^5.0.0"
-  checksum: 10c0/2abbb9beb9ff03d8772f4a9c14150c7e7620be15eeb027dd606feda61eda82db209b3b9ac514f6ff11ab937a9fd27a4ae11e654592c903ebffc16a8f98a8d114
+  checksum: 10c0/1a252a167cef0aaca737fc0dc945eb0143bc6792a6f03c1b2f1fac7b177d162c9d782490bf1fc85be9d1d2b75569f3eb86a7a6aac503ce83d7f5b42bc2a64b54
   languageName: node
   linkType: hard
 
-"@owf/crypto@npm:^0.3.2":
-  version: 0.3.2
-  resolution: "@owf/crypto@npm:0.3.2"
+"@owf/crypto@npm:^0.4.0":
+  version: 0.4.0
+  resolution: "@owf/crypto@npm:0.4.0"
   dependencies:
-    "@noble/hashes": "npm:^2.2.0"
-    "@owf/identity-common": "npm:0.3.2"
-  checksum: 10c0/ca96e9692801b15a18811db8f6d6650256a105739d9148b8242dcc03000240d96fcec34a8dec1cb6ba98305a1eff63933754228eb89b2c9f12195249ea22c022
+    "@noble/hashes": "npm:^2.4.0"
+    "@owf/identity-common": "npm:0.4.0"
+  checksum: 10c0/31c495bc21fcc8bd6da405b10cfd02899cbeabfb61acf63bca0e8a921f713a6b9fabd955b68a2b7b633851a7d1d2535e22593d49fca494e0b09d590965387faf
   languageName: node
   linkType: hard
 
-"@owf/identity-common@npm:0.3.2, @owf/identity-common@npm:^0.3.1, @owf/identity-common@npm:^0.3.2":
-  version: 0.3.2
-  resolution: "@owf/identity-common@npm:0.3.2"
-  checksum: 10c0/e6f5c20f468e0c683aa0ca31a9000350aee6f04e2f6a7cbdc6fa9287a2bdea6ec00a1eb463c4468a250476e6f64ab65cc9420cc61786c1b8c7acf64c1542face
+"@owf/identity-common@npm:0.4.0, @owf/identity-common@npm:^0.4.0":
+  version: 0.4.0
+  resolution: "@owf/identity-common@npm:0.4.0"
+  checksum: 10c0/005d2a7d025d5106337dbf79669e837d2b2b71e06adc9d6dfad0cbd41b5140cb6d0fcbc95db26558ea4c03b117a7adc8773a7073cdaa01203816e072b500b4ff
   languageName: node
   linkType: hard
 
-"@owf/token-status-list@npm:^0.3.1":
-  version: 0.3.2
-  resolution: "@owf/token-status-list@npm:0.3.2"
+"@owf/token-status-list@npm:^0.4.0":
+  version: 0.4.0
+  resolution: "@owf/token-status-list@npm:0.4.0"
   dependencies:
-    "@owf/cose": "npm:0.3.2"
-    "@owf/identity-common": "npm:0.3.2"
-    cbor-x: "npm:^1.6.4"
-    pako: "npm:^3.0.1"
-    zod: "npm:^4.4.3"
-  checksum: 10c0/75a1227621820ab1b58ec2276303a5eef3f3a45a1dfcbf4e5c67f0c50353d661d3f75e64da64aa5e98bfa615842ecbba4fbcc06ac7938abe715714b9395de03a
+    "@owf/cose": "npm:0.4.0"
+    "@owf/identity-common": "npm:0.4.0"
+    cbor-x: "npm:^1.6.6"
+    pako: "npm:^3.0.2"
+    zod: "npm:^4.6.5"
+  checksum: 10c0/2aa02af5abea122f321e9ddfe7f9578b79873854218c89a1e50fd18703e5117f0c80a9a15621fc96fe46aa2fc55101158f3bfdc4ddebf64e52a33f22316204fe
   languageName: node
   linkType: hard
 
@@ -264,11 +264,11 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@proof.com/proof-vc-server@workspace:packages/server"
   dependencies:
-    "@owf/crypto": "npm:^0.3.2"
-    "@owf/identity-common": "npm:^0.3.2"
+    "@owf/crypto": "npm:^0.4.0"
+    "@owf/identity-common": "npm:^0.4.0"
     "@proof.com/proof-vc-common": "npm:0.4.4"
-    "@sd-jwt/core": "npm:^0.20.1"
-    "@sd-jwt/sd-jwt-vc": "npm:^0.20.1"
+    "@sd-jwt/core": "npm:^0.21.0"
+    "@sd-jwt/sd-jwt-vc": "npm:^0.21.0"
     jose: "npm:^6.2.12"
     publint: "npm:^0.3.24"
     typescript: "npm:^6.0.3"
@@ -284,23 +284,24 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@sd-jwt/core@npm:0.20.1, @sd-jwt/core@npm:^0.20.1":
-  version: 0.20.1
-  resolution: "@sd-jwt/core@npm:0.20.1"
+"@sd-jwt/core@npm:0.21.0, @sd-jwt/core@npm:^0.21.0":
+  version: 0.21.0
+  resolution: "@sd-jwt/core@npm:0.21.0"
   dependencies:
-    "@owf/identity-common": "npm:^0.3.1"
-  checksum: 10c0/a6e315ec1724a799d4ffd9eb43770d4f9bd303567d5dbf222c7960858cc76eccae6caa46e3640c9e2f4b984bf25f73a551540fa634c2c0002652ea2abf9db675
+    "@owf/identity-common": "npm:^0.4.0"
+  checksum: 10c0/6d619ea6abaca83d914969f86adf634d4870d0737720c15279e537ef4e85482e0f1747be07d90c78bfb028b82e8f1cf5a76fbd85b092006ada0772084ff60521
   languageName: node
   linkType: hard
 
-"@sd-jwt/sd-jwt-vc@npm:^0.20.1":
-  version: 0.20.1
-  resolution: "@sd-jwt/sd-jwt-vc@npm:0.20.1"
+"@sd-jwt/sd-jwt-vc@npm:^0.21.0":
+  version: 0.21.0
+  resolution: "@sd-jwt/sd-jwt-vc@npm:0.21.0"
   dependencies:
-    "@owf/token-status-list": "npm:^0.3.1"
-    "@sd-jwt/core": "npm:0.20.1"
-    zod: "npm:^4.4.3"
-  checksum: 10c0/0843b8f4b7a661459012c9d5afcc32ae51eb09f4b8d1f21ec60adc45ef187590240843d009a6eb300e446427aede05a861d90f74407c46bdc10aa5eaee7f5025
+    "@owf/identity-common": "npm:^0.4.0"
+    "@owf/token-status-list": "npm:^0.4.0"
+    "@sd-jwt/core": "npm:0.21.0"
+    zod: "npm:^4.6.5"
+  checksum: 10c0/152f7ecd1e558a7dfc70e0c9d7f24bdc6db2155afacc0c8a39ceaf2311a731a8e2d67ee17db579cecdb8047fb41ad5eabd1371dcb73e34a7446e5749d85ab682
   languageName: node
   linkType: hard
 
@@ -325,12 +326,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:^24.13.4":
-  version: 24.13.4
-  resolution: "@types/node@npm:24.13.4"
+"@types/node@npm:^24.13.5":
+  version: 24.13.5
+  resolution: "@types/node@npm:24.13.5"
   dependencies:
     undici-types: "npm:~7.18.0"
-  checksum: 10c0/a12196e984cb09ead549651217b4b395961ea011f3a3791a9f78311d70b5f3be343c6fc935376553c06a34c14d963d4f637ad7829837b0c88cf441919f422893
+  checksum: 10c0/f6c7f564e7b16670bc72ce119f2aaba0f6d6ebb886c13d8cd3656a96e4825d91d826be3d0995fc776df4e19eceb4d3074e5e18d54ce1aebd3f6e0ba12b9108cb
   languageName: node
   linkType: hard
 
@@ -575,15 +576,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"cbor-x@npm:^1.6.4":
-  version: 1.6.4
-  resolution: "cbor-x@npm:1.6.4"
+"cbor-x@npm:^1.6.6":
+  version: 1.6.6
+  resolution: "cbor-x@npm:1.6.6"
   dependencies:
     cbor-extract: "npm:^2.2.2"
   dependenciesMeta:
     cbor-extract:
       optional: true
-  checksum: 10c0/fa8fc366063fbaa56b4e3930633873becf38ba087824f7dbc77700b0c352c2ffe1b8cf72954659bda29ea2765c63eed494aaf0b5219534d77fdf7ceaec40d286
+  checksum: 10c0/674e952750dad24f8546a84e7fde3955bcf601397d7d40337f0d222d98d2e9ebe463b33694380f3330942a0ec607a8ddee02358fe023d3706722273cf963b73b
   languageName: node
   linkType: hard
 
@@ -1154,10 +1155,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"pako@npm:^3.0.1":
-  version: 3.0.1
-  resolution: "pako@npm:3.0.1"
-  checksum: 10c0/1292b2ffcbdf42f95be5519ffc11c4cb8daf065f7681936a5b0fe2028753396fbaea0c22cb22e54a4f12bb0c3217513f6b2261fa77e4dbf8c9bd76efe3eca2cc
+"pako@npm:^3.0.2":
+  version: 3.0.2
+  resolution: "pako@npm:3.0.2"
+  checksum: 10c0/6de8283193fff07382134f1cdcd387b3bc43f2b4d1a04ed086f98183fe0b4fb7a282cd4b58397593794bba2c9d42fd008285344ba086c1f8fde49cd436587d3d
   languageName: node
   linkType: hard
 
@@ -1210,12 +1211,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"prettier@npm:^3.9.6":
-  version: 3.9.6
-  resolution: "prettier@npm:3.9.6"
+"prettier@npm:^3.9.7":
+  version: 3.9.7
+  resolution: "prettier@npm:3.9.7"
   bin:
     prettier: bin/prettier.cjs
-  checksum: 10c0/9f7ddae234035868f3daab3dc34e6de7e54622185afb017378029f0c09a9c023248ccf6f34def0b17a0538e18c47aa1b3188bab72965d1bf735919baa0747e99
+  checksum: 10c0/3bb72e3fd0292695fe1b808a7a3b67a0d68842c780f01ebca7ff1cf2fe05055478dccb513a8d022be59b3494497b4a3b6dc059baee116c1debe69bded535567b
   languageName: node
   linkType: hard
 
@@ -1230,10 +1231,10 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "proof-vc-workspace@workspace:."
   dependencies:
-    "@types/node": "npm:^24.13.4"
+    "@types/node": "npm:^24.13.5"
     eslint: "npm:^10.10.0"
     eslint-plugin-unused-imports: "npm:^4.4.1"
-    prettier: "npm:^3.9.6"
+    prettier: "npm:^3.9.7"
     prettier-plugin-packagejson: "npm:^3.0.2"
     publint: "npm:^0.3.24"
     typescript: "npm:^6.0.3"
@@ -1487,9 +1488,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"zod@npm:^4.4.3":
-  version: 4.5.4
-  resolution: "zod@npm:4.5.4"
-  checksum: 10c0/511a2a4d1a6f875dfdd70a1586989a8b14ef126776cd6218a2c760b9f65f14ef389ec20d92ee1aa4fcb4566d4ff3fa012956044f9dc503510d82e4c756a8ba92
+"zod@npm:^4.6.5":
+  version: 4.6.5
+  resolution: "zod@npm:4.6.5"
+  checksum: 10c0/32eb6c5e98becbe045675b2141c3611451c16ba567f9779231d79af41c4d651ca1c22f154aef7e6c6e77b929f23e43f1154ca05b82e119e922353725d6776af5
   languageName: node
   linkType: hard
