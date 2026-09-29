@@ -5,7 +5,7 @@ import { authorizationServerIssuer } from "@proof.com/proof-vc-common/internal";
 import type { ServerClientConfig } from "./client.ts";
 
 const REQUEST_OBJECT_TYP = "oauth-authz-req+jwt";
-const REQUEST_OBJECT_ALG = "ES256";
+export const REQUEST_OBJECT_ALG = "ES256";
 export const DEFAULT_REQUEST_OBJECT_LIFETIME_SECONDS = 300;
 
 export function requestObjectClaims(

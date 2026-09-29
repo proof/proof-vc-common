@@ -16,6 +16,7 @@ Read our [documentation](https://dev.proof.com/docs/digital-credentials-overview
   - [Pushed Authorization Requests](#pushed-authorization-requests)
   - [Secured Authorization Requests](#secured-authorization-requests)
     - [Digital Credentials API](#digital-credentials-api)
+    - [Client ID Metadata Document](#client-id-metadata-document)
 - [Verifiable Credential Presentation](#verifiable-credential-presentation)
   - [Credential Type](#credential-type)
   - [Request](#request)
@@ -208,6 +209,22 @@ const request = await proof.signedDcApiRequest({
   nonce: "3e8e4918-e9fb-453a-a538-81152be15c1b",
   dcqlQuery: DCQL_QUERY_BASIC,
   expectedOrigins: ["https://example.com", "https://ai-agent.com"],
+});
+```
+
+#### Client ID Metadata Document
+
+`createClientIdMetadataDocument` builds the [Client ID Metadata Document](https://www.ietf.org/archive/id/draft-ietf-oauth-client-id-metadata-document-02.html) to serve at your `clientId` URL. Outside `production`, `http://localhost` URLs are accepted.
+
+```javascript
+import { createClientIdMetadataDocument } from "@proof.com/proof-vc-server";
+
+const document = await createClientIdMetadataDocument({
+  environment: "sandbox",
+  clientId: "https://example.com/x401-client", // the URL serving this document
+  clientName: "Example",
+  redirectUris: ["https://proof.com/agents-trust-list"],
+  jwks: [publicJwk],
 });
 ```
 

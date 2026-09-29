@@ -36,6 +36,12 @@ export { DEFAULT_REQUEST_OBJECT_LIFETIME_SECONDS } from "./secured_request.ts";
 export { createClient } from "./client.ts";
 
 export type {
+  ClientIdMetadataDocumentParams,
+  ClientIdMetadataDocument,
+} from "./client_id_metadata.ts";
+export { createClientIdMetadataDocument } from "./client_id_metadata.ts";
+
+export type {
   VerifierConfig,
   VerifyParams,
   VerifyVPTokenParams,
