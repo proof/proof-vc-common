@@ -7,11 +7,6 @@ const CREDENTIAL_ID_SET = {
 
 export const CREDENTIAL_IDS = Object.keys(CREDENTIAL_ID_SET) as CredentialID[];
 
-export const credentialIdAsType = (s: string): CredentialID => {
-  for (const credentialId of CREDENTIAL_IDS) {
-    if (s === credentialId) {
-      return credentialId;
-    }
-  }
-  throw new Error(`invalid CredentialID: ${s}`);
-};
+export function isKnownCredentialId(s: string): s is CredentialID {
+  return Object.hasOwn(CREDENTIAL_ID_SET, s);
+}

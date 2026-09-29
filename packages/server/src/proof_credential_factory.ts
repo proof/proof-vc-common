@@ -2,9 +2,11 @@ import type { SDJwt } from "@sd-jwt/core";
 import {
   type ProofCredential,
   ProofCredentialV1,
+  DefaultProofCredential,
 } from "./proof_credentials.ts";
 import { hasher } from "@owf/crypto";
 import { PROOF_CREDENTIAL_V1_VCT } from "@proof.com/proof-vc-common";
+import { warnOnce } from "@proof.com/proof-vc-common/internal";
 
 export const getProofCredential = async (
   sdjwt: SDJwt,
@@ -47,7 +49,15 @@ export const getProofCredential = async (
         is_national_us: national?.["us"] as boolean,
       }),
     });
-  } else {
-    throw new Error(`unknown ProofCredential for vct: ${vct}`);
   }
+
+  warnOnce(
+    "PROOF_VC_UNKNOWN_CREDENTIAL_TYPE",
+    `credential vct "${String(vct)}" is not known to this version of the Proof VC SDK and was returned as a DefaultProofCredential; upgrade to a newer version`,
+  );
+  return new DefaultProofCredential({
+    sdjwt,
+    claims,
+    ...(typeof vct === "string" && { vct }),
+  });
 };

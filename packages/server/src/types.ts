@@ -13,6 +13,8 @@ export interface ProofCredential {
   getClaims(): Record<string, unknown>;
   getSDJWT(): SDJwt;
   getNonce(): string | undefined;
+  toJSON(): Record<string, unknown>;
 }
 
-export type VPToken = Record<CredentialID, ProofCredential[]>;
+export type VPToken = Record<CredentialID, ProofCredential[]> &
+  Record<string, ProofCredential[]>;
