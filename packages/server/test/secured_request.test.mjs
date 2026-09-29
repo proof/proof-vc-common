@@ -367,7 +367,11 @@ async function withFetch(stub, fn) {
 
 const hangUntilAborted = (_url, init) =>
   new Promise((_resolve, reject) => {
-    init.signal.addEventListener("abort", () => reject(init.signal.reason));
+    const keepAlive = setInterval(() => {}, 1000);
+    init.signal.addEventListener("abort", () => {
+      clearInterval(keepAlive);
+      reject(init.signal.reason);
+    });
   });
 
 async function rejectsWithServerError(promise, messagePattern) {

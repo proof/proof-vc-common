@@ -30,30 +30,17 @@ export async function fetchJson({
   config,
   options,
 }: JsonRequest): Promise<{ status: number; data: Record<string, unknown> }> {
-  const controller = new AbortController();
-  const timer = setTimeout(
-    () =>
-      controller.abort(
-        new DOMException(
-          "The operation was aborted due to timeout",
-          "TimeoutError",
-        ),
-      ),
-    config.timeout ?? DEFAULT_TIMEOUT_MS,
-  );
-  const callerSignal = options?.signal;
-  const forwardAbort = () => controller.abort(callerSignal?.reason);
-  if (callerSignal?.aborted === true) {
-    forwardAbort();
-  } else {
-    callerSignal?.addEventListener("abort", forwardAbort, { once: true });
+  const signals = [AbortSignal.timeout(config.timeout ?? DEFAULT_TIMEOUT_MS)];
+  if (options?.signal !== undefined) {
+    signals.push(options.signal);
   }
 
-  let body: string;
   let response: Response;
   try {
-    response = await fetch(url, { ...init, signal: controller.signal });
-    body = await response.text();
+    response = await fetch(url, {
+      ...init,
+      signal: AbortSignal.any(signals),
+    });
   } catch (cause) {
     const detail = cause instanceof Error ? cause.message : String(cause);
     throw new ProofVCError(
@@ -61,11 +48,9 @@ export async function fetchJson({
       `${description} could not be completed: ${detail}`,
       { cause },
     );
-  } finally {
-    clearTimeout(timer);
-    callerSignal?.removeEventListener("abort", forwardAbort);
   }
 
+  const body = await response.text();
   if (!response.ok) {
     throw new ProofVCError(
       "authorization_server_error",
