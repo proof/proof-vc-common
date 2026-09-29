@@ -13,7 +13,7 @@ A Yarn 4 monorepo publishing two ESM TypeScript packages:
 2. **Prompt before publishing.** Never bump version, push tags, create a Release, or trigger the publish workflow without explicit confirmation. Publishes are permanent.
 3. **Run `yarn check-all` before any commit or push.** Composes format, lint, typecheck, publint.
 4. **Keep `yarn publint` on `--pack npm`.** `--pack auto` picks yarn-1 mode and reports false-positive errors.
-5. **Keep `engines.node` at `>=22.0.0` and keep the CI `test-matrix` covering that floor.** Node 22 is the oldest maintained LTS (Node 20 is EOL; `@sd-jwt/*` needs 20+). `>=22` is a lower bound, so it still allows 24 and newer. The floor is checked at runtime by the `test-matrix` job (`yarn test` on Node 22 and 24); `@types/node` tracks the dev runtime (24, from `.node-version`), not the floor. Invariant: the `test-matrix` low entry must equal the `engines.node` floor, so raise the floor by bumping both together. If you drop the matrix, pin `@types/node` to the floor major so typecheck guards it instead.
+5. **Keep `engines.node` at `>=22.12.0` and keep the CI `test-matrix` covering that floor.** Node 22 is the oldest maintained LTS (Node 20 is EOL; `@sd-jwt/*` needs 20+), and 22.12 is where `require()` of ES modules became unflagged, which matters because the packages are ESM-only. `>=22.12` is a lower bound, so it still allows 24 and newer. The floor is checked at runtime by the `test-matrix` job (`yarn test` on Node 22.12 and 24); `@types/node` tracks the dev runtime (24, from `.node-version`), not the floor. Invariant: the `test-matrix` low entry must equal the `engines.node` floor, so raise the floor by bumping both together. If you drop the matrix, pin `@types/node` to the floor major so typecheck guards it instead.
 6. **Never use `eslint-disable` as a workaround.** If a lint rule fires, fix the underlying code or surface the rule to the user for a config decision — do not silence it inline. Same applies to `@ts-ignore` / `@ts-expect-error` and other suppression comments.
 
 ## Package Boundaries
@@ -39,6 +39,10 @@ Verify `common` stays free of runtime leaks after build:
 grep -lE '(jose|@sd-jwt|@owf|node:)' packages/common/dist/*.js
 # Must match nothing.
 ```
+
+## Package READMEs
+
+`packages/*/README.md` are generated from the root `README.md`: each holds the root sections that apply to its package (shared sections in both, Client Side common-only, server features and Verify server-only), with a filtered TOC and absolute GitHub links. Never edit them by hand; regenerate both after changing the root README.
 
 ## Essential Commands
 

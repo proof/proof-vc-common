@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- `node` >= 22.0.0 (minimum supported, the `engines.node` floor). Develop on Node 24 (active LTS), pinned in `.node-version`.
+- `node` >= 22.12.0 (minimum supported, the `engines.node` floor). Develop on Node 24 (active LTS), pinned in `.node-version`.
 - `yarn` 4 - run `corepack enable`; the version is pinned via `packageManager` in `package.json`.
 
 ## Design Principles
@@ -34,7 +34,7 @@ To submit a pull request:
 - Include a clear title and description explaining what changed and why.
 - Keep changes focused, try to limit one issue or feature per PR.
 
-CI runs `test` on a matrix of Node 22 (the `engines.node` floor) and Node 24 (active LTS). The other jobs run on Node 24 from `.node-version`.
+CI runs `test` on a matrix of Node 22.12 (the `engines.node` floor) and Node 24 (active LTS). The other jobs run on Node 24 from `.node-version`.
 
 ## Code of conduct
 

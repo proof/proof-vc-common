@@ -6,7 +6,7 @@
     "VC",
     "Verifiable Credentials",
     "OID4VCI",
-    "OID4VCP",
+    "OID4VP",
     "SD-JWT-VC",
     "Selective Disclosures",
     "Proof",
@@ -29,6 +29,8 @@
       "default": "./dist/index.js"
     }
   },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "files": [
     "dist"
   ],
@@ -50,7 +52,7 @@
     "typescript": "^6.0.3"
   },
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=22.12.0"
   },
   "publishConfig": {
     "access": "public"

@@ -1,6 +1,6 @@
 # Proof Digital Credentials
 
-<img src="docs/proof-logo.svg" alt="drawing" width="450"/>
+<img src="https://raw.githubusercontent.com/proof/proof-vc-common/main/docs/proof-logo.svg" alt="drawing" width="450"/>
 
 _A digital passport. Verified once, usable everywhere._
 
@@ -11,7 +11,6 @@ Read our [documentation](https://dev.proof.com/docs/digital-credentials-overview
 - [Packages](#packages)
 - [Installation](#installation)
 - [Getting Started](#getting-started)
-  - [Client Side](#client-side)
   - [Server Side](#server-side)
   - [Response Modes](#response-modes)
   - [Pushed Authorization Requests](#pushed-authorization-requests)
@@ -30,10 +29,10 @@ Read our [documentation](https://dev.proof.com/docs/digital-credentials-overview
 
 ## Packages
 
-| Package                                             | Runtime             | Usage                                                                                                                                                                     | Runtime deps      |
-| --------------------------------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
-| **[`@proof.com/proof-vc-common`](packages/common)** | browser **or** Node | Request a Verifiable Presentation                                                                                                                                         | **0** ✅          |
-| **[`@proof.com/proof-vc-server`](packages/server)** | Node                | `proof-vc-common` **plus** Presentation Verification, Pushed Authorization Requests, Secured Authorization Requests (JAR), Digital Credentials API, Transaction Templates | sd-jwt, owf, jose |
+| Package                                                                                                | Runtime             | Usage                                                                                                                                                                     | Runtime deps      |
+| ------------------------------------------------------------------------------------------------------ | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
+| **[`@proof.com/proof-vc-common`](https://github.com/proof/proof-vc-common/blob/main/packages/common)** | browser **or** Node | Request a Verifiable Presentation                                                                                                                                         | **0** ✅          |
+| **[`@proof.com/proof-vc-server`](https://github.com/proof/proof-vc-common/blob/main/packages/server)** | Node                | `proof-vc-common` **plus** Presentation Verification, Pushed Authorization Requests, Secured Authorization Requests (JAR), Digital Credentials API, Transaction Templates | sd-jwt, owf, jose |
 
 ## Installation
 
@@ -54,67 +53,12 @@ Proof implements the [OpenID for Verifiable Presentations 1.0](https://openid.ne
 
 ## Getting Started
 
-### Client Side
-
-You can request a Verifiable Presentation in the browser by using `createClient` and `authorizationUrl` to craft an Authorization Request URL.
-Either `fragment` or `direct_post` [Response Mode](#response-modes) are supported (defaults to `fragment`).
-
-- if using `fragment`, at the callback URI, use `parseAuthorizationResponse` to extract the `vp_token` from it and send it to your verification endpoint
-- if using `direct_post`, the `vp_token` is sent directly to your verification endpoint
-
-```javascript
-import {
-  createClient,
-  parseAuthorizationResponse,
-} from "@proof.com/proof-vc-common";
-
-const proof = createClient({
-  environment: "sandbox",
-  clientId: "verifier-demo",
-  callbackUri: "https://example.com/callback",
-});
-
-button.onclick = () => {
-  window.location.href = proof.authorizationUrl({
-    nonce: "3e8e4918-e9fb-453a-a538-81152be15c1b",
-    scope: "urn:proof:params:scope:verifiable-credentials:basic",
-  });
-};
-
-// at https://example.com/callback
-const response = parseAuthorizationResponse(); // reads window.location.hash
-if (response?.type === "success") {
-  fetch("/verify_vp_token", {
-    method: "POST",
-    body: new URLSearchParams({ vp_token: response.vpToken }),
-  });
-} else if (response?.type === "error") {
-  console.error(response.error, response.errorDescription);
-}
-```
-
-`parseAuthorizationResponse` returns `{ type: "success", vpToken, state? }`, `{ type: "error", error, errorDescription?, errorUri?, state? }` when the authorization server answered with an [OAuth 2.0 error response](https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.2.1), or `null` when neither is present.
-
-You can also use `buildAuthorizationUrl` to provide all the Authorization Request parameters at once:
-
-```javascript
-import { buildAuthorizationUrl } from "@proof.com/proof-vc-common";
-
-window.location.href = buildAuthorizationUrl({
-  environment: "sandbox",
-  clientId: "verifier-demo",
-  callbackUri: "https://example.com/callback",
-  nonce: "3e8e4918-e9fb-453a-a538-81152be15c1b",
-  scope: "urn:proof:params:scope:verifiable-credentials:basic",
-});
-```
-
 ### Server Side
 
 You can request a Verifiable Presentation from our backend by using `createClient` and `authorizationUrl` to craft an Authorization Request URL.
 Either `fragment` or `direct_post` [Response Mode](#response-modes) are supported (defaults to `fragment`).
 
-With [`@proof.com/proof-vc-server`](packages/server) you can also use [Pushed Authorization Requests](#pushed-authorization-requests), [Secured Authorization Requests](#secured-authorization-requests) and [Transaction Templates](#transaction-templates).
+With [`@proof.com/proof-vc-server`](https://github.com/proof/proof-vc-common/blob/main/packages/server) you can also use [Pushed Authorization Requests](#pushed-authorization-requests), [Secured Authorization Requests](#secured-authorization-requests) and [Transaction Templates](#transaction-templates).
 
 ```javascript
 import { createClient } from "@proof.com/proof-vc-server";
@@ -289,7 +233,7 @@ All attributes are selectively disclosable and will return `undefined` if the cl
 
 ### Request
 
-Request a Verifiable Credential Presentation with an [OAuth 2.0](https://datatracker.ietf.org/doc/html/rfc6749) Authorization Request. See [Client Side](#client-side) and [Server Side](#server-side) above for the two entry points. Exactly one of `scope` or `dcqlQuery` must be given.
+Request a Verifiable Credential Presentation with an [OAuth 2.0](https://datatracker.ietf.org/doc/html/rfc6749) Authorization Request. See [Client Side](https://github.com/proof/proof-vc-common#client-side) and [Server Side](#server-side) above for the two entry points. Exactly one of `scope` or `dcqlQuery` must be given.
 
 #### Scopes
 
@@ -511,9 +455,9 @@ Proof's Verifiable Credentials are issued by our [Certificate Authority](https:/
 following the CA/B Forum Baseline Requirements for the Issuance and Management of Publicly-Trusted TLS Server Certificates published at https://www.cabforum.org.
 
 The Proof Root CA R1 Certificate is published at http://cert.proof.com/proof-root-ca-r1.crt and
-is also committed in this repository [proof_root_ca_r1.ts](packages/server/src/certificates/trust_store/proof_root_ca_r1.ts).
+is also committed in this repository [proof_root_ca_r1.ts](https://github.com/proof/proof-vc-common/blob/main/packages/server/src/certificates/trust_store/proof_root_ca_r1.ts).
 
-The sandbox Root CA R1 Development certificate is also committed in this repository [proof_root_ca_r1_development.ts](packages/server/src/certificates/trust_store/proof_root_ca_r1_development.ts) and used when `environment: "sandbox"`.
+The sandbox Root CA R1 Development certificate is also committed in this repository [proof_root_ca_r1_development.ts](https://github.com/proof/proof-vc-common/blob/main/packages/server/src/certificates/trust_store/proof_root_ca_r1_development.ts) and used when `environment: "sandbox"`.
 
 ## Documentation
 
@@ -522,4 +466,4 @@ _API Documentation_ https://dev.proof.com/reference/authorizeverifiablecredentia
 
 ## Contributing
 
-[Contribution guidelines for this project](CONTRIBUTING.md)
+[Contribution guidelines for this project](https://github.com/proof/proof-vc-common/blob/main/CONTRIBUTING.md)

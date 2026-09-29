@@ -1,7 +1,10 @@
 export * from "@proof.com/proof-vc-common";
 
-export { ProofCredentialV1 } from "./proof_credentials.ts";
-export type { ProofCredential, VPToken, TrustRoot } from "./types.ts";
+export {
+  ProofCredentialV1,
+  DefaultProofCredential,
+} from "./proof_credentials.ts";
+export type { ProofCredential, VPToken } from "./types.ts";
 
 export type {
   TransactionData,
@@ -19,13 +22,17 @@ export { TX_DATA_TYPE, transactionData } from "./transaction_data.ts";
 
 export type {
   ServerClientConfig,
+  PrivateKey,
   PrivateKeyFactory,
   ServerAuthorizationRequestParams,
   ServerVCClient,
   DCAPIAuthorizationRequestParams,
   DCAPIAuthorizationRequest,
   JarByReferenceParams,
+  RequestOptions,
 } from "./client.ts";
+export { DEFAULT_TIMEOUT_MS } from "./http.ts";
+export { DEFAULT_REQUEST_OBJECT_LIFETIME_SECONDS } from "./secured_request.ts";
 export { createClient } from "./client.ts";
 
 export type {

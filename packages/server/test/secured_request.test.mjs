@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { createPrivateKey } from "node:crypto";
 import {
   generateKeyPair,
   exportJWK,
@@ -8,13 +9,12 @@ import {
   decodeProtectedHeader,
 } from "jose";
 
-import { createClient, DCQL_QUERY_BASIC } from "../dist/index.js";
+import { createClient, DCQL_QUERY_BASIC, ProofVCError } from "../dist/index.js";
 
 const CLIENT_ID = "https://verifier.example.com";
 const CALLBACK_URI = "https://verifier.example.com/callback";
-const ISSUER = "https://api.proof.com";
-const AS_METADATA_URL =
-  "https://api.proof.com/.well-known/oauth-authorization-server/verifiable-credentials/v1/presentation";
+const AS_ISSUER =
+  "https://api.proof.com/verifiable-credentials/v1/presentation";
 
 const { publicKey, privateKey } = await generateKeyPair("ES256", {
   extractable: true,
@@ -23,27 +23,14 @@ const privateJwk = await exportJWK(privateKey);
 const publicJwk = await exportJWK(publicKey);
 const expectedKid = await calculateJwkThumbprint(publicJwk);
 
-async function withStubbedFetch(
-  fn,
-  { issuer = ISSUER, requestUri = "urn:par:123" } = {},
-) {
+async function withStubbedFetch(fn, { requestUri = "urn:par:123" } = {}) {
   const realFetch = globalThis.fetch;
   const calls = [];
   globalThis.fetch = async (url, options) => {
     const href = String(url);
-    calls.push({ url: href, body: options?.body });
-    if (href.endsWith("/par")) {
-      return {
-        ok: true,
-        status: 201,
-        json: async () => ({ request_uri: requestUri }),
-      };
-    }
-    return {
-      ok: true,
-      status: 200,
-      json: async () => ({ issuer }),
-    };
+    calls.push({ url: href, body: options?.body, signal: options?.signal });
+    assert.ok(href.endsWith("/par"), `unexpected fetch of ${href}`);
+    return Response.json({ request_uri: requestUri }, { status: 201 });
   };
   try {
     return await fn(calls);
@@ -74,8 +61,7 @@ test("signedDcApiRequest returns a JAR with the expected header and claims", asy
       expectedOrigins: ["https://verifier.example.com"],
     });
 
-    assert.equal(calls.length, 1);
-    assert.equal(calls[0].url, AS_METADATA_URL);
+    assert.deepEqual(calls, []);
 
     const header = decodeProtectedHeader(jwt);
     assert.equal(header.typ, "oauth-authz-req+jwt");
@@ -84,7 +70,11 @@ test("signedDcApiRequest returns a JAR with the expected header and claims", asy
 
     const { payload } = await jwtVerify(jwt, publicKey);
     assert.equal(payload.iss, CLIENT_ID);
-    assert.equal(payload.aud, ISSUER);
+    assert.equal(payload.aud, AS_ISSUER);
+    const now = Math.floor(Date.now() / 1000);
+    assert.ok(Math.abs(payload.iat - now) <= 2, `iat ${payload.iat} vs ${now}`);
+    assert.equal(payload.exp, payload.iat + 300);
+    assert.match(payload.jti, /^[0-9a-f-]{36}$/);
     assert.equal(payload.client_id, CLIENT_ID);
     assert.equal(payload.response_type, "vp_token");
     assert.equal(payload.response_mode, "dc_api");
@@ -100,21 +90,7 @@ test("signedDcApiRequest returns a JAR with the expected header and claims", asy
   });
 });
 
-test("signedDcApiRequest omits expectedOrigins and includes response_uri", async () => {
-  await withStubbedFetch(async () => {
-    const client = securedClient();
-    const jwt = await client.signedDcApiRequest({
-      dcqlQuery: DCQL_QUERY_BASIC,
-      nonce: "nonce-123",
-    });
-
-    const { payload } = await jwtVerify(jwt, publicKey);
-    assert.equal(payload.response_uri, CALLBACK_URI);
-    assert.deepEqual(payload.expected_origins, [""]);
-  });
-});
-
-test("signedDcApiRequest with expectedOrigins does not need callbackUri", async () => {
+test("signedDcApiRequest does not need callbackUri", async () => {
   await withStubbedFetch(async () => {
     const client = securedClient({ callbackUri: undefined });
     const jwt = await client.signedDcApiRequest({
@@ -131,16 +107,24 @@ test("signedDcApiRequest with expectedOrigins does not need callbackUri", async 
   });
 });
 
-test("signedDcApiRequest rejects missing expectedOrigins and callbackUri", async () => {
+test("signedDcApiRequest rejects missing, empty or non-string expectedOrigins", async () => {
   await withStubbedFetch(async () => {
-    const client = securedClient({ callbackUri: undefined });
-    await assert.rejects(
-      client.signedDcApiRequest({
-        dcqlQuery: DCQL_QUERY_BASIC,
-        nonce: "nonce-123",
-      }),
-      /requires either the `expectedOrigins` parameter or `callbackUri` client config/,
-    );
+    const client = securedClient();
+    for (const expectedOrigins of [undefined, [], [42]]) {
+      await assert.rejects(
+        client.signedDcApiRequest({
+          dcqlQuery: DCQL_QUERY_BASIC,
+          nonce: "nonce-123",
+          expectedOrigins,
+        }),
+        (error) =>
+          error instanceof ProofVCError &&
+          error.code === "invalid_config" &&
+          /`expectedOrigins` must be a non-empty array of origin strings/.test(
+            error.message,
+          ),
+      );
+    }
   });
 });
 
@@ -193,20 +177,6 @@ test("signedDcApiRequest rejects supplying both scope and dcqlQuery", async () =
   });
 });
 
-test("signedDcApiRequest rejects an empty expectedOrigins array", async () => {
-  await withStubbedFetch(async () => {
-    const client = securedClient();
-    await assert.rejects(
-      client.signedDcApiRequest({
-        dcqlQuery: DCQL_QUERY_BASIC,
-        nonce: "nonce-123",
-        expectedOrigins: [],
-      }),
-      /`expectedOrigins` must be a non-empty array/,
-    );
-  });
-});
-
 test("signedAuthorizationRequest signs the plain request params and omits client_secret", async () => {
   await withStubbedFetch(async () => {
     const client = securedClient({ clientSecret: "s3cret" });
@@ -218,7 +188,7 @@ test("signedAuthorizationRequest signs the plain request params and omits client
 
     const { payload } = await jwtVerify(jwt, publicKey);
     assert.equal(payload.iss, CLIENT_ID);
-    assert.equal(payload.aud, ISSUER);
+    assert.equal(payload.aud, AS_ISSUER);
     assert.equal(payload.client_id, CLIENT_ID);
     assert.equal(payload.scope, "openid");
     assert.equal(payload.nonce, "nonce-abc");
@@ -310,7 +280,10 @@ test("jarByReferenceAuthorizationUrl builds an authorize URL from client_id and 
 });
 
 test("jarByReferenceAuthorizationUrl rejects JAR over PAR", () => {
-  const client = securedClient({ usePushedAuthorizationRequest: true });
+  const client = securedClient({
+    usePushedAuthorizationRequest: true,
+    clientSecret: "s3cret",
+  });
   assert.throws(
     () =>
       client.jarByReferenceAuthorizationUrl({
@@ -318,6 +291,40 @@ test("jarByReferenceAuthorizationUrl rejects JAR over PAR", () => {
       }),
     /cannot be combined with pushed authorization requests/,
   );
+});
+
+test("createClient rejects an invalid server config at construction", () => {
+  const base = {
+    environment: "production",
+    clientId: CLIENT_ID,
+    callbackUri: CALLBACK_URI,
+  };
+  const cases = [
+    [{ ...base, environment: "prod" }, /`environment` must be one of/],
+    [
+      { ...base, usePushedAuthorizationRequest: true },
+      /`clientSecret` must be a non-empty string/,
+    ],
+    [
+      { ...base, useSecuredAuthorizationRequest: true },
+      /requires a `privateKeyFactory` function/,
+    ],
+    [{ ...base, timeout: 0 }, /`timeout` must be a positive integer/],
+    [
+      { ...base, requestObjectLifetime: 1.5 },
+      /`requestObjectLifetime` must be a positive integer/,
+    ],
+  ];
+  for (const [config, pattern] of cases) {
+    assert.throws(
+      () => createClient(config),
+      (error) =>
+        error instanceof ProofVCError &&
+        error.code === "invalid_config" &&
+        pattern.test(error.message),
+      `expected ${JSON.stringify(config)} to be rejected`,
+    );
+  }
 });
 
 test("signed methods require useSecuredAuthorizationRequest", async () => {
@@ -337,19 +344,203 @@ test("signed methods require useSecuredAuthorizationRequest", async () => {
   );
 });
 
-test("signed methods require privateKeyFactory", async () => {
-  const client = createClient({
+function parClient(overrides = {}) {
+  return createClient({
     environment: "production",
     clientId: CLIENT_ID,
     callbackUri: CALLBACK_URI,
-    useSecuredAuthorizationRequest: true,
+    clientSecret: "s3cret",
+    usePushedAuthorizationRequest: true,
+    ...overrides,
   });
+}
+
+async function withFetch(stub, fn) {
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = stub;
+  try {
+    return await fn();
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+}
+
+const hangUntilAborted = (_url, init) =>
+  new Promise((_resolve, reject) => {
+    init.signal.addEventListener("abort", () => reject(init.signal.reason));
+  });
+
+async function rejectsWithServerError(promise, messagePattern) {
   await assert.rejects(
-    client.signedDcApiRequest({
-      dcqlQuery: DCQL_QUERY_BASIC,
-      nonce: "n",
-      expectedOrigins: ["https://verifier.example.com"],
-    }),
-    /privateKeyFactory/,
+    promise,
+    (error) =>
+      error instanceof ProofVCError &&
+      error.code === "authorization_server_error" &&
+      messagePattern.test(error.message),
+  );
+}
+
+test("a PAR error response fails with authorization_server_error and the body excerpt", async () => {
+  await withFetch(
+    async () =>
+      Response.json(
+        { error: "invalid_request", error_description: "bad scope" },
+        { status: 400 },
+      ),
+    () =>
+      rejectsWithServerError(
+        parClient().authorizationUrl({ scope: "openid", nonce: "n" }),
+        /^pushed authorization request failed \(400\): \{"error":"invalid_request"/,
+      ),
+  );
+});
+
+test("a non-JSON error page reports the status instead of a SyntaxError", async () => {
+  await withFetch(
+    async () =>
+      new Response("<html><body>502 Bad Gateway</body></html>", {
+        status: 502,
+        headers: { "content-type": "text/html" },
+      }),
+    () =>
+      rejectsWithServerError(
+        parClient().authorizationUrl({ scope: "openid", nonce: "n" }),
+        /^pushed authorization request failed \(502\): <html>/,
+      ),
+  );
+});
+
+test("a 200 with a non-JSON body fails with authorization_server_error", async () => {
+  await withFetch(
+    async () => new Response("not json", { status: 200 }),
+    () =>
+      rejectsWithServerError(
+        parClient().authorizationUrl({ scope: "openid", nonce: "n" }),
+        /returned a non-JSON body \(200\): not json/,
+      ),
+  );
+});
+
+test("a network failure is wrapped with its cause", async () => {
+  const cause = new TypeError("fetch failed");
+  await withFetch(
+    async () => {
+      throw cause;
+    },
+    () =>
+      assert.rejects(
+        parClient().authorizationUrl({ scope: "openid", nonce: "n" }),
+        (error) =>
+          error instanceof ProofVCError &&
+          error.code === "authorization_server_error" &&
+          error.message ===
+            "pushed authorization request could not be completed: fetch failed" &&
+          error.cause === cause,
+      ),
+  );
+});
+
+test("the configured timeout aborts a hanging request", async () => {
+  await withFetch(hangUntilAborted, () =>
+    rejectsWithServerError(
+      parClient({ timeout: 20 }).authorizationUrl({
+        scope: "openid",
+        nonce: "n",
+      }),
+      /could not be completed: The operation was aborted due to timeout/,
+    ),
+  );
+});
+
+test("a per-call signal aborts the request", async () => {
+  await withFetch(hangUntilAborted, async () => {
+    const controller = new AbortController();
+    const pending = parClient().authorizationUrl(
+      { scope: "openid", nonce: "n" },
+      { signal: controller.signal },
+    );
+    controller.abort(new Error("caller gave up"));
+    await rejectsWithServerError(
+      pending,
+      /could not be completed: caller gave up/,
+    );
+  });
+});
+
+test("the PAR request is a POST carrying the default timeout signal", async () => {
+  const calls = [];
+  await withFetch(
+    async (url, init) => {
+      calls.push({ url: String(url), init });
+      return Response.json({ request_uri: "urn:par:custom" }, { status: 201 });
+    },
+    async () => {
+      const url = await parClient().authorizationUrl({
+        scope: "openid",
+        nonce: "n",
+      });
+      assert.equal(calls.length, 1);
+      assert.ok(calls[0].url.endsWith("/par"));
+      assert.ok(calls[0].init.signal instanceof AbortSignal);
+      assert.equal(calls[0].init.method, "POST");
+      assert.equal(
+        new URL(url).searchParams.get("request_uri"),
+        "urn:par:custom",
+      );
+    },
+  );
+});
+
+test("privateKeyFactory may return a KeyObject or a CryptoKey", async () => {
+  await withStubbedFetch(async () => {
+    for (const key of [
+      privateKey,
+      createPrivateKey({ key: privateJwk, format: "jwk" }),
+    ]) {
+      const client = securedClient({ privateKeyFactory: () => key });
+      const jwt = await client.signedAuthorizationRequest({
+        scope: "openid",
+        nonce: "n",
+      });
+      assert.equal(decodeProtectedHeader(jwt).kid, expectedKid);
+      const { payload } = await jwtVerify(jwt, publicKey);
+      assert.equal(payload.iss, CLIENT_ID);
+    }
+  });
+});
+
+test("requestObjectLifetime sets exp and each JAR gets a fresh jti", async () => {
+  await withStubbedFetch(async () => {
+    const client = securedClient({ requestObjectLifetime: 60 });
+    const params = { scope: "openid", nonce: "n" };
+    const [{ payload: first }, { payload: second }] = await Promise.all([
+      client
+        .signedAuthorizationRequest(params)
+        .then((jwt) => jwtVerify(jwt, publicKey)),
+      client
+        .signedAuthorizationRequest(params)
+        .then((jwt) => jwtVerify(jwt, publicKey)),
+    ]);
+    assert.equal(first.exp, first.iat + 60);
+    assert.notEqual(first.jti, second.jti);
+  });
+});
+
+test("the JAR audience is the environment's authorization server issuer", async () => {
+  const sandbox = createClient({
+    environment: "sandbox",
+    clientId: CLIENT_ID,
+    callbackUri: CALLBACK_URI,
+    useSecuredAuthorizationRequest: true,
+    privateKeyFactory: () => privateJwk,
+  });
+  const jwt = await sandbox.signedAuthorizationRequest({
+    scope: "openid",
+    nonce: "n",
+  });
+  const { payload } = await jwtVerify(jwt, publicKey);
+  assert.equal(
+    payload.aud,
+    "https://api.fairfax.proof.com/verifiable-credentials/v1/presentation",
   );
 });

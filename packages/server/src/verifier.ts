@@ -4,16 +4,33 @@ import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
 import type { JwtPayload } from "@sd-jwt/core";
 import { ES256, ES384, ES512, hasher } from "@owf/crypto";
 import { base64urlDecode } from "@owf/identity-common";
+import {
+  ProofVCError,
+  type Environment,
+  type ProofVCErrorCode,
+} from "@proof.com/proof-vc-common";
+import {
+  warnOnce,
+  assertOneOf,
+  credentialIssuer,
+  BASE_URLS,
+} from "@proof.com/proof-vc-common/internal";
 
 import type { ProofCredential, TrustRoot, VPToken } from "./types.ts";
-import { CREDENTIAL_IDS, credentialIdAsType } from "./utils.ts";
+import { CREDENTIAL_IDS, isKnownCredentialId } from "./utils.ts";
 import { getProofCredential } from "./proof_credential_factory.ts";
 import { verifyChain } from "./certificates/chain_validator.ts";
 import { getTrustRoot } from "./certificates/trust_store/index.ts";
 
 export type VerifierConfig = {
-  trustRoot: TrustRoot;
+  environment: Environment;
 };
+
+const SD_JWT_VC_TYP = "dc+sd-jwt";
+
+function trustRootFor(environment: Environment): TrustRoot {
+  return environment === "production" ? "production" : "development";
+}
 
 export type VerifyParams = {
   encodedSDJWT: string;
@@ -38,6 +55,26 @@ function isSupportedAlg(s: unknown): s is SupportedAlg {
   return typeof s === "string" && s in VERIFIERS;
 }
 
+function fail(message: string): never {
+  throw new ProofVCError("verification_failed", message);
+}
+
+async function wrap<T>(
+  code: ProofVCErrorCode,
+  message: string,
+  fn: () => T | Promise<T>,
+): Promise<T> {
+  try {
+    return await fn();
+  } catch (cause) {
+    if (cause instanceof ProofVCError) {
+      throw cause;
+    }
+    const detail = cause instanceof Error ? cause.message : String(cause);
+    throw new ProofVCError(code, `${message}: ${detail}`, { cause });
+  }
+}
+
 function kbVerifierFor(kbAlg: SupportedAlg) {
   return async (
     data: string,
@@ -46,12 +83,10 @@ function kbVerifierFor(kbAlg: SupportedAlg) {
   ): Promise<boolean> => {
     const cnfJwk = payload.cnf?.jwk;
     if (cnfJwk === undefined) {
-      throw new Error("SD-JWT-VC is missing cnf.jwk — cannot verify KB JWT");
+      fail("SD-JWT-VC is missing cnf.jwk — cannot verify KB JWT");
     }
     if (cnfJwk.crv !== EXPECTED_CURVE[kbAlg]) {
-      throw new Error(
-        `cnf.jwk curve ${cnfJwk.crv} does not match KB JWT alg ${kbAlg}`,
-      );
+      fail(`cnf.jwk curve ${cnfJwk.crv} does not match KB JWT alg ${kbAlg}`);
     }
     const verifier = await VERIFIERS[kbAlg].getVerifier(cnfJwk);
     return verifier(data, sig);
@@ -64,19 +99,35 @@ export interface Verifier {
 }
 
 export function createVerifier(config: VerifierConfig): Verifier {
+  assertOneOf(config.environment, BASE_URLS, "environment");
+  const trustRoot = trustRootFor(config.environment);
+  const expectedIssuer = credentialIssuer(config.environment);
+
   async function verify({
     encodedSDJWT,
     aud,
   }: VerifyParams): Promise<ProofCredential> {
-    const decoded = await new SDJwtVcInstance({ hasher }).decode(encodedSDJWT);
+    const decoded = await wrap("invalid_input", "malformed SD-JWT-VC", () =>
+      new SDJwtVcInstance({ hasher }).decode(encodedSDJWT),
+    );
+    const typ = decoded.jwt?.header?.["typ"];
     const alg = decoded.jwt?.header?.["alg"];
     const x5c = decoded.jwt?.header?.["x5c"];
+    const iss = decoded.jwt?.payload?.["iss"];
 
+    if (typ !== SD_JWT_VC_TYP) {
+      fail(`JWT header typ ${String(typ)} is not ${SD_JWT_VC_TYP}`);
+    }
     if (!isSupportedAlg(alg)) {
-      throw new Error(`Unsupported or missing alg: ${alg}`);
+      fail(`Unsupported or missing alg: ${alg}`);
     }
     if (!Array.isArray(x5c) || x5c.length === 0) {
-      throw new Error("JWT header x5c is missing or empty");
+      fail("JWT header x5c is missing or empty");
+    }
+    if (iss !== expectedIssuer) {
+      fail(
+        `Credential iss ${String(iss)} does not match expected issuer ${expectedIssuer}`,
+      );
     }
 
     let kbVerifier = null;
@@ -84,34 +135,30 @@ export function createVerifier(config: VerifierConfig): Verifier {
     const kbAlg = decoded.kbJwt?.header?.alg;
     if (decoded.kbJwt !== undefined) {
       if (!isSupportedAlg(kbAlg)) {
-        throw new Error(`Unsupported or missing KB JWT alg: ${kbAlg}`);
+        fail(`Unsupported or missing KB JWT alg: ${kbAlg}`);
       }
       if (aud !== undefined && decoded.kbJwt.payload?.aud !== aud) {
-        throw new Error(
+        fail(
           `KB JWT aud ${decoded.kbJwt.payload?.aud} does not match expected aud ${aud}`,
         );
       }
       keyBindingNonce = decoded.kbJwt.payload?.nonce;
       if (keyBindingNonce === undefined) {
-        throw new Error("SD-JWT-VC contains a KB JWT but no nonce claim");
+        fail("SD-JWT-VC contains a KB JWT but no nonce claim");
       }
       kbVerifier = kbVerifierFor(kbAlg);
-    } else if (aud !== undefined) {
-      throw new Error(
-        "aud was supplied for verification but the SD-JWT-VC contains no KB JWT",
-      );
     }
 
-    const chain = x5c.map(
-      (b64) => new X509Certificate(Buffer.from(b64 as string, "base64")),
+    const chain = await wrap("invalid_input", "malformed x5c certificate", () =>
+      x5c.map(
+        (b64) => new X509Certificate(Buffer.from(b64 as string, "base64")),
+      ),
     );
-    verifyChain(chain, getTrustRoot(config.trustRoot));
+    verifyChain(chain, getTrustRoot(trustRoot));
 
     const leafJwk = chain[0]!.publicKey.export({ format: "jwk" });
     if (leafJwk.crv !== EXPECTED_CURVE[alg]) {
-      throw new Error(
-        `Leaf cert curve ${leafJwk.crv} does not match alg ${alg}`,
-      );
+      fail(`Leaf cert curve ${leafJwk.crv} does not match alg ${alg}`);
     }
 
     const verifier = await VERIFIERS[alg].getVerifier(leafJwk);
@@ -120,9 +167,11 @@ export function createVerifier(config: VerifierConfig): Verifier {
       verifier,
       ...(kbVerifier !== null && { kbVerifier }),
     });
-    await SDJWTClient.verify(encodedSDJWT, {
-      ...(keyBindingNonce !== undefined && { keyBindingNonce }),
-    });
+    await wrap("verification_failed", "SD-JWT-VC verification failed", () =>
+      SDJWTClient.verify(encodedSDJWT, {
+        ...(keyBindingNonce !== undefined && { keyBindingNonce }),
+      }),
+    );
 
     return getProofCredential(decoded);
   }
@@ -131,24 +180,60 @@ export function createVerifier(config: VerifierConfig): Verifier {
     encodedVPToken,
     aud,
   }: VerifyVPTokenParams): Promise<VPToken> {
-    const records = JSON.parse(base64urlDecode(encodedVPToken)) as Record<
-      string,
-      string[]
-    >;
-    const vpToken = {} as VPToken;
-    for (const credentialId of CREDENTIAL_IDS) {
-      vpToken[credentialId] = [];
+    const parsed: unknown = await wrap(
+      "invalid_input",
+      "malformed vp_token",
+      () => JSON.parse(base64urlDecode(encodedVPToken)),
+    );
+    if (
+      parsed === null ||
+      typeof parsed !== "object" ||
+      Array.isArray(parsed)
+    ) {
+      throw new ProofVCError(
+        "invalid_input",
+        "vp_token must decode to a JSON object keyed by credential id",
+      );
     }
+    const records = parsed as Record<string, unknown>;
 
-    for (const [key, encodedSDJWTs] of Object.entries(records)) {
-      const credentialId = credentialIdAsType(key);
-      for (const encodedSDJWT of encodedSDJWTs) {
-        const credential = await verify({
-          encodedSDJWT,
-          ...(aud !== undefined && { aud }),
-        });
-        vpToken[credentialId].push(credential);
+    const vpToken = {} as VPToken;
+    const credentialIds = new Set<string>([
+      ...CREDENTIAL_IDS,
+      ...Object.keys(records),
+    ]);
+    for (const credentialId of credentialIds) {
+      if (credentialId in Object.prototype) {
+        throw new ProofVCError(
+          "invalid_input",
+          `vp_token contains an invalid credential id "${credentialId}"`,
+        );
       }
+      if (!isKnownCredentialId(credentialId)) {
+        warnOnce(
+          "PROOF_VC_UNKNOWN_CREDENTIAL_ID",
+          `vp_token contains credential id "${credentialId}" which is not known to this version of the Proof VC SDK; upgrade to a newer version`,
+        );
+      }
+      const presentations = Object.hasOwn(records, credentialId)
+        ? records[credentialId]
+        : [];
+      if (
+        !Array.isArray(presentations) ||
+        !presentations.every((p) => typeof p === "string")
+      ) {
+        throw new ProofVCError(
+          "invalid_input",
+          `vp_token["${credentialId}"] must be an array of SD-JWT-VC strings`,
+        );
+      }
+      const credentials: ProofCredential[] = [];
+      for (const encodedSDJWT of presentations) {
+        credentials.push(
+          await verify({ encodedSDJWT, ...(aud !== undefined && { aud }) }),
+        );
+      }
+      vpToken[credentialId] = credentials;
     }
     return vpToken;
   }

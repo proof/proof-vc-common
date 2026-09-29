@@ -1,4 +1,11 @@
-import type { CredentialID } from "./types.ts";
+import type { CredentialID, KnownScope } from "./types.ts";
+
+const KNOWN_SCOPE_SET = {
+  "urn:proof:params:scope:verifiable-credentials:basic": true,
+  "urn:proof:params:scope:verifiable-credentials:nationality:us": true,
+} satisfies Record<KnownScope, true>;
+
+export const KNOWN_SCOPES = Object.keys(KNOWN_SCOPE_SET) as KnownScope[];
 
 export const DEFAULT_CREDENTIAL_ID: CredentialID = "proof_id_default";
 
