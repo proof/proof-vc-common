@@ -271,7 +271,7 @@ const request = await proof.signedDcApiRequest({
 
 #### Client ID Metadata Document
 
-`createClientIdMetadataDocument` builds the [Client ID Metadata Document](https://www.ietf.org/archive/id/draft-ietf-oauth-client-id-metadata-document-02.html) to serve at your `clientId` URL. Outside `production`, `http://localhost` URLs are accepted.
+`createClientIdMetadataDocument` builds the [Client ID Metadata Document](https://www.ietf.org/archive/id/draft-ietf-oauth-client-id-metadata-document-02.html) to serve at your `clientId` URL.
 
 ```javascript
 import {
@@ -291,25 +291,11 @@ const document = await createClientIdMetadataDocument({
 ### Verifier Enrollment
 
 Proof creates your Verifier account from your [Client ID Metadata Document](#client-id-metadata-document).
-`enroll` signs a [`private_key_jwt`](https://datatracker.ietf.org/doc/html/rfc7523) client assertion with the private key published in the document and Proof emails an activation link to the account owner.
-Enrollment is available **only from `@proof.com/proof-vc-server`**.
+`enroll` signs a [`private_key_jwt`](https://datatracker.ietf.org/doc/html/rfc7523) client assertion with the private key published in the document.
 
 ```
 npx @proof.com/proof-vc-server enroll https://example.com/.well-known/proof-client.json --email you@example.com --key private-key.pem --environment sandbox
 ```
-
-```javascript
-import { enroll } from "@proof.com/proof-vc-server";
-
-const result = await enroll({
-  environment: "sandbox",
-  clientId: "https://example.com/.well-known/proof-client.json",
-  email: "you@example.com",
-  privateKey: myPrivateKeyJwk,
-});
-```
-
-`enroll` returns Proof's response (`status` is `pending`, `approved` or `rejected` with a `manual_setup_url`) and throws an `EnrollmentError` carrying the [OAuth 2.0 error response](https://datatracker.ietf.org/doc/html/rfc6749#section-5.2) when Proof refuses the request. The command takes the private key as a PEM or JWK file and prints either as JSON.
 
 ## Verifiable Credential Presentation
 
