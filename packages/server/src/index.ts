@@ -42,6 +42,15 @@ export type {
 export { createClientIdMetadataDocument } from "./client_id_metadata.ts";
 
 export type {
+  EnrollParams,
+  EnrollResult,
+  EnrollmentAccepted,
+  EnrollmentRejected,
+  EnrollmentErrorResponse,
+} from "./enroll.ts";
+export { enroll, EnrollmentError, ENROLLMENT_PATH } from "./enroll.ts";
+
+export type {
   VerifierConfig,
   VerifyParams,
   VerifyVPTokenParams,

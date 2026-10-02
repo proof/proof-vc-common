@@ -7,6 +7,7 @@ import {
   parseAuthorizationResponse,
   DCQL_QUERY_BASIC,
   ProofVCError,
+  agentsTrustListUrl,
 } from "../dist/index.js";
 
 const CONFIG = {
@@ -216,5 +217,23 @@ test("DCQL_QUERY_BASIC is deeply frozen", () => {
     DCQL_QUERY_BASIC.credentials[0].meta.vct_values.push(
       "https://evil.example",
     ),
+  );
+});
+
+test("agentsTrustListUrl resolves the environment's trust list", () => {
+  assert.equal(
+    agentsTrustListUrl("sandbox"),
+    "https://api.fairfax.proof.com/.well-known/agents-trust-list",
+  );
+  assert.equal(
+    agentsTrustListUrl("production"),
+    "https://api.proof.com/.well-known/agents-trust-list",
+  );
+  assert.throws(
+    () => agentsTrustListUrl("prod"),
+    (error) =>
+      error instanceof ProofVCError &&
+      error.code === "invalid_config" &&
+      /`environment` must be one of/.test(error.message),
   );
 });

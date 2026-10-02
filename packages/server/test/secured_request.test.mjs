@@ -409,7 +409,7 @@ test("a non-JSON error page reports the status instead of a SyntaxError", async 
     () =>
       rejectsWithServerError(
         parClient().authorizationUrl({ scope: "openid", nonce: "n" }),
-        /^pushed authorization request failed \(502\): <html>/,
+        /^pushed authorization request failed \(502\)$/,
       ),
   );
 });

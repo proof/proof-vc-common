@@ -1,0 +1,227 @@
+import { randomUUID } from "node:crypto";
+import { SignJWT, calculateJwkThumbprint, exportJWK, type JWK } from "jose";
+import { ProofVCError, type Environment } from "@proof.com/proof-vc-common";
+import { BASE_URLS, resolveBaseUrl } from "@proof.com/proof-vc-common/internal";
+import type { PrivateKey } from "./client.ts";
+import { fetchJson, type HttpConfig, type RequestOptions } from "./http.ts";
+import { REQUEST_OBJECT_ALG } from "./secured_request.ts";
+
+export const ENROLLMENT_PATH = "/verifiable-credentials/v1/x401-enroll";
+const CLIENT_ASSERTION_TYPE =
+  "urn:ietf:params:oauth:client-assertion-type:jwt-bearer";
+const CLIENT_ASSERTION_LIFETIME_SECONDS = 300;
+const LOCAL_HOST =
+  /^(localhost|.*\.localhost|.*\.local|127\..*|0\.0\.0\.0|\[::1\])$/;
+
+export type EnrollParams = HttpConfig & {
+  environment: Environment;
+  clientId: string;
+  email: string;
+  privateKey: PrivateKey;
+};
+
+export type EnrollmentAccepted = {
+  status: "pending" | "approved";
+  activation: "email_sent" | "complete";
+  organization: { id: string; name: string; legal_entity_name?: string };
+  owner_email: string | null;
+};
+
+export type EnrollmentRejected = {
+  status: "rejected";
+  reason: string;
+  manual_setup_url: string;
+};
+
+export type EnrollResult = EnrollmentAccepted | EnrollmentRejected;
+
+export type EnrollmentErrorResponse = {
+  error: string;
+  error_description?: string;
+  error_uri?: string;
+};
+
+export class EnrollmentError extends ProofVCError {
+  readonly status: number;
+  readonly response: EnrollmentErrorResponse;
+
+  constructor(status: number, response: EnrollmentErrorResponse) {
+    super(
+      status >= 500 ? "authorization_server_error" : "invalid_config",
+      response.error_description ?? response.error,
+      { status },
+    );
+    this.name = "EnrollmentError";
+    this.status = status;
+    this.response = response;
+  }
+}
+
+function invalid(message: string): never {
+  throw new ProofVCError("invalid_config", message);
+}
+
+function assertPublicClientIdUrl(clientId: string): URL {
+  let url: URL;
+  try {
+    url = new URL(clientId);
+  } catch {
+    invalid("the client id must be a URL");
+  }
+  if (url.protocol !== "https:" || LOCAL_HOST.test(url.hostname)) {
+    invalid("the client id must be a public https URL");
+  }
+  return url;
+}
+
+function isJwk(key: PrivateKey): key is JWK {
+  return typeof key === "object" && "kty" in key;
+}
+
+async function privateKeyJwk(privateKey: PrivateKey): Promise<JWK> {
+  try {
+    return isJwk(privateKey) ? privateKey : await exportJWK(privateKey);
+  } catch (cause) {
+    const detail = cause instanceof Error ? cause.message : String(cause);
+    throw new ProofVCError("invalid_config", `invalid private key: ${detail}`, {
+      cause,
+    });
+  }
+}
+
+async function thumbprint(jwk: unknown): Promise<string | undefined> {
+  try {
+    return await calculateJwkThumbprint(jwk as JWK);
+  } catch {
+    return undefined;
+  }
+}
+
+async function registeredKid(
+  clientId: string,
+  privateKey: PrivateKey,
+  config: HttpConfig,
+  options: RequestOptions | undefined,
+): Promise<string> {
+  let data: Record<string, unknown>;
+  try {
+    ({ data } = await fetchJson({
+      url: clientId,
+      description: "client metadata document fetch",
+      config,
+      options,
+    }));
+  } catch (error) {
+    if (!(error instanceof ProofVCError) || error.status === undefined) {
+      throw error;
+    }
+    throw new ProofVCError(
+      "invalid_config",
+      error.status === 404
+        ? `no client metadata document was found at ${clientId}`
+        : `the client metadata document at ${clientId} could not be fetched`,
+      { status: error.status, cause: error },
+    );
+  }
+  if (data["client_id"] !== clientId) {
+    invalid(
+      `the client metadata document at ${clientId} declares a different client_id`,
+    );
+  }
+  const jwks = data["jwks"];
+  const keys =
+    jwks !== null && typeof jwks === "object" && "keys" in jwks
+      ? jwks.keys
+      : undefined;
+  if (!Array.isArray(keys)) {
+    invalid(`the client metadata document at ${clientId} has no jwks.keys`);
+  }
+  const own = await thumbprint(await privateKeyJwk(privateKey));
+  const published = await Promise.all(keys.map(thumbprint));
+  const index = published.findIndex(
+    (candidate) => candidate !== undefined && candidate === own,
+  );
+  if (index === -1) {
+    invalid(
+      `the private key is not in the client metadata document at ${clientId}`,
+    );
+  }
+  const kid = (keys[index] as JWK).kid;
+  return kid ?? published[index]!;
+}
+
+export async function enroll(
+  { environment, clientId, email, privateKey, ...config }: EnrollParams,
+  options?: RequestOptions,
+): Promise<EnrollResult> {
+  if (!Object.hasOwn(BASE_URLS, environment)) {
+    invalid(
+      `the environment must be one of ${Object.keys(BASE_URLS).join(", ")}`,
+    );
+  }
+  assertPublicClientIdUrl(clientId);
+  if (typeof email !== "string" || email.length === 0) {
+    invalid("an email address is required");
+  }
+
+  const kid = await registeredKid(clientId, privateKey, config, options);
+  const audience = new URL(
+    ENROLLMENT_PATH,
+    resolveBaseUrl(environment),
+  ).toString();
+  const issuedAt = Math.floor(Date.now() / 1000);
+  const assertion = await new SignJWT({})
+    .setProtectedHeader({ alg: REQUEST_OBJECT_ALG, kid })
+    .setIssuer(clientId)
+    .setSubject(clientId)
+    .setAudience(audience)
+    .setIssuedAt(issuedAt)
+    .setExpirationTime(issuedAt + CLIENT_ASSERTION_LIFETIME_SECONDS)
+    .setJti(randomUUID())
+    .sign(privateKey);
+
+  let status: number;
+  let data: Record<string, unknown>;
+  try {
+    ({ status, data } = await fetchJson({
+      url: audience,
+      description: "enrollment",
+      init: {
+        method: "PUT",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          client_assertion_type: CLIENT_ASSERTION_TYPE,
+          client_assertion: assertion,
+          email,
+        }).toString(),
+      },
+      config,
+      options,
+      acceptStatus: (code) =>
+        (code >= 200 && code < 300) || [400, 401, 422, 500].includes(code),
+    }));
+  } catch (error) {
+    if (!(error instanceof ProofVCError) || error.status === undefined) {
+      throw error;
+    }
+    throw new ProofVCError(
+      "authorization_server_error",
+      error.status === 404
+        ? `the enrollment endpoint is not available in the ${environment} environment`
+        : "Proof did not accept the enrollment request",
+      { status: error.status, cause: error },
+    );
+  }
+  if (status >= 400 && status !== 422) {
+    throw new EnrollmentError(status, {
+      error: String(data["error"] ?? "server_error"),
+      ...(typeof data["error_description"] === "string" && {
+        error_description: data["error_description"],
+      }),
+      ...(typeof data["error_uri"] === "string" && {
+        error_uri: data["error_uri"],
+      }),
+    });
+  }
+  return data as EnrollResult;
+}

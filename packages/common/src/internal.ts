@@ -59,6 +59,14 @@ export function authorizationServerIssuer(environment: Environment): string {
   return new URL(OID4VP_URI, resolveBaseUrl(environment)).toString();
 }
 
+export function agentsTrustListUrl(environment: Environment): string {
+  assertOneOf(environment, BASE_URLS, "environment");
+  return new URL(
+    "/.well-known/agents-trust-list",
+    resolveBaseUrl(environment),
+  ).toString();
+}
+
 export function assertNonEmptyString(
   value: unknown,
   name: string,
