@@ -41,3 +41,4 @@ export {
   buildAuthorizationUrl,
   parseAuthorizationResponse,
 } from "./client.ts";
+export { agentsTrustListUrl } from "./internal.ts";

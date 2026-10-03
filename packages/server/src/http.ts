@@ -16,6 +16,7 @@ type JsonRequest = {
   init?: RequestInit;
   config: HttpConfig;
   options?: RequestOptions | undefined;
+  acceptStatus?: (status: number) => boolean;
 };
 
 function excerpt(body: string): string {
@@ -29,6 +30,7 @@ export async function fetchJson({
   init,
   config,
   options,
+  acceptStatus,
 }: JsonRequest): Promise<{ status: number; data: Record<string, unknown> }> {
   const signals = [AbortSignal.timeout(config.timeout ?? DEFAULT_TIMEOUT_MS)];
   if (options?.signal !== undefined) {
@@ -51,10 +53,13 @@ export async function fetchJson({
   }
 
   const body = await response.text();
-  if (!response.ok) {
+  const accepted = acceptStatus?.(response.status) ?? response.ok;
+  if (!accepted) {
+    const json = response.headers.get("content-type")?.includes("json");
     throw new ProofVCError(
       "authorization_server_error",
-      `${description} failed (${response.status}): ${excerpt(body)}`,
+      `${description} failed (${response.status})${json ? `: ${excerpt(body)}` : ""}`,
+      { status: response.status },
     );
   }
 

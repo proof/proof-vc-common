@@ -6,14 +6,18 @@ export type ProofVCErrorCode =
 
 export class ProofVCError extends Error {
   readonly code: ProofVCErrorCode;
+  readonly status?: number;
 
   constructor(
     code: ProofVCErrorCode,
     message: string,
-    options?: { cause?: unknown },
+    options?: { cause?: unknown; status?: number },
   ) {
     super(message, options);
     this.name = "ProofVCError";
     this.code = code;
+    if (options?.status !== undefined) {
+      this.status = options.status;
+    }
   }
 }

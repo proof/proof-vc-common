@@ -22,10 +22,10 @@ Read our [documentation](https://dev.proof.com/docs/digital-credentials-overview
 
 ## Packages
 
-| Package                                                                                                | Runtime             | Usage                                                                                                                                                                     | Runtime deps      |
-| ------------------------------------------------------------------------------------------------------ | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
-| **[`@proof.com/proof-vc-common`](https://github.com/proof/proof-vc-common/blob/main/packages/common)** | browser **or** Node | Request a Verifiable Presentation                                                                                                                                         | **0** ✅          |
-| **[`@proof.com/proof-vc-server`](https://github.com/proof/proof-vc-common/blob/main/packages/server)** | Node                | `proof-vc-common` **plus** Presentation Verification, Pushed Authorization Requests, Secured Authorization Requests (JAR), Digital Credentials API, Transaction Templates | sd-jwt, owf, jose |
+| Package                                                                                                | Runtime             | Usage                                                                                                                               | Runtime deps      |
+| ------------------------------------------------------------------------------------------------------ | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
+| **[`@proof.com/proof-vc-common`](https://github.com/proof/proof-vc-common/blob/main/packages/common)** | browser **or** Node | Request a Verifiable Presentation                                                                                                   | **0** ✅          |
+| **[`@proof.com/proof-vc-server`](https://github.com/proof/proof-vc-common/blob/main/packages/server)** | Node                | `proof-vc-common` **plus** Presentation Verification, Secured Authorization Requests, Transaction Templates and Verifier Enrollment | sd-jwt, owf, jose |
 
 ## Installation
 

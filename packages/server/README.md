@@ -17,6 +17,7 @@ Read our [documentation](https://dev.proof.com/docs/digital-credentials-overview
   - [Secured Authorization Requests](#secured-authorization-requests)
     - [Digital Credentials API](#digital-credentials-api)
     - [Client ID Metadata Document](#client-id-metadata-document)
+  - [Verifier Enrollment](#verifier-enrollment)
 - [Verifiable Credential Presentation](#verifiable-credential-presentation)
   - [Credential Type](#credential-type)
   - [Request](#request)
@@ -30,10 +31,10 @@ Read our [documentation](https://dev.proof.com/docs/digital-credentials-overview
 
 ## Packages
 
-| Package                                                                                                | Runtime             | Usage                                                                                                                                                                     | Runtime deps      |
-| ------------------------------------------------------------------------------------------------------ | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
-| **[`@proof.com/proof-vc-common`](https://github.com/proof/proof-vc-common/blob/main/packages/common)** | browser **or** Node | Request a Verifiable Presentation                                                                                                                                         | **0** ✅          |
-| **[`@proof.com/proof-vc-server`](https://github.com/proof/proof-vc-common/blob/main/packages/server)** | Node                | `proof-vc-common` **plus** Presentation Verification, Pushed Authorization Requests, Secured Authorization Requests (JAR), Digital Credentials API, Transaction Templates | sd-jwt, owf, jose |
+| Package                                                                                                | Runtime             | Usage                                                                                                                               | Runtime deps      |
+| ------------------------------------------------------------------------------------------------------ | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
+| **[`@proof.com/proof-vc-common`](https://github.com/proof/proof-vc-common/blob/main/packages/common)** | browser **or** Node | Request a Verifiable Presentation                                                                                                   | **0** ✅          |
+| **[`@proof.com/proof-vc-server`](https://github.com/proof/proof-vc-common/blob/main/packages/server)** | Node                | `proof-vc-common` **plus** Presentation Verification, Secured Authorization Requests, Transaction Templates and Verifier Enrollment | sd-jwt, owf, jose |
 
 ## Installation
 
@@ -214,18 +215,30 @@ const request = await proof.signedDcApiRequest({
 
 #### Client ID Metadata Document
 
-`createClientIdMetadataDocument` builds the [Client ID Metadata Document](https://www.ietf.org/archive/id/draft-ietf-oauth-client-id-metadata-document-02.html) to serve at your `clientId` URL. Outside `production`, `http://localhost` URLs are accepted.
+`createClientIdMetadataDocument` builds the [Client ID Metadata Document](https://www.ietf.org/archive/id/draft-ietf-oauth-client-id-metadata-document-02.html) to serve at your `clientId` URL.
 
 ```javascript
-import { createClientIdMetadataDocument } from "@proof.com/proof-vc-server";
+import {
+  agentsTrustListUrl,
+  createClientIdMetadataDocument,
+} from "@proof.com/proof-vc-server";
 
 const document = await createClientIdMetadataDocument({
   environment: "sandbox",
-  clientId: "https://example.com/x401-client", // the URL serving this document
-  clientName: "Example",
-  redirectUris: ["https://proof.com/agents-trust-list"],
+  clientId: "https://example.com/.well-known/proof-client.json", // the URL serving this document
+  clientName: "Example", // Your business name
+  redirectUris: [agentsTrustListUrl("sandbox")], // agentsTrustListUrl for x401 or your own redirect URIs for OID4VP
   jwks: [publicJwk],
 });
+```
+
+### Verifier Enrollment
+
+Proof creates your Verifier account from your [Client ID Metadata Document](#client-id-metadata-document).
+`enroll` signs a [`private_key_jwt`](https://datatracker.ietf.org/doc/html/rfc7523) client assertion with the private key published in the document.
+
+```
+npx @proof.com/proof-vc-server enroll https://example.com/.well-known/proof-client.json --email you@example.com --key private-key.pem --environment sandbox
 ```
 
 ## Verifiable Credential Presentation
