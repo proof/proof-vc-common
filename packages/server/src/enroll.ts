@@ -20,25 +20,33 @@ export type EnrollParams = HttpConfig & {
   privateKey: PrivateKey;
 };
 
-export type EnrollmentAccepted = {
-  status: "pending" | "approved";
-  activation: "email_sent" | "complete";
-  organization: { id: string; name: string; legal_entity_name?: string };
-  owner_email: string | null;
+export type EnrollmentPending = {
+  status: "pending";
+  activation: "email_sent";
+  email: string;
+};
+
+export type EnrollmentApproved = {
+  status: "approved";
+  activation: "complete";
 };
 
 export type EnrollmentRejected = {
   status: "rejected";
-  reason: string;
-  manual_setup_url: string;
+  reason:
+    | "public_suffix_host"
+    | "invalid_email"
+    | "email_domain_mismatch"
+    | "unauthorized";
+  message?: string;
 };
 
-export type EnrollResult = EnrollmentAccepted | EnrollmentRejected;
+export type EnrollResult =
+  EnrollmentPending | EnrollmentApproved | EnrollmentRejected;
 
 export type EnrollmentErrorResponse = {
   error: string;
   error_description?: string;
-  error_uri?: string;
 };
 
 export class EnrollmentError extends ProofVCError {
@@ -159,9 +167,15 @@ export async function enroll(
       `the environment must be one of ${Object.keys(BASE_URLS).join(", ")}`,
     );
   }
-  assertPublicClientIdUrl(clientId);
+  const host = assertPublicClientIdUrl(clientId).hostname.replace(/^www\./, "");
   if (typeof email !== "string" || email.length === 0) {
     invalid("an email address is required");
+  }
+  if (
+    environment !== "localhost" &&
+    email.slice(email.lastIndexOf("@") + 1).toLowerCase() !== host
+  ) {
+    invalid(`the email address must be on ${host}`);
   }
 
   const kid = await registeredKid(clientId, privateKey, config, options);
@@ -217,9 +231,6 @@ export async function enroll(
       error: String(data["error"] ?? "server_error"),
       ...(typeof data["error_description"] === "string" && {
         error_description: data["error_description"],
-      }),
-      ...(typeof data["error_uri"] === "string" && {
-        error_uri: data["error_uri"],
       }),
     });
   }

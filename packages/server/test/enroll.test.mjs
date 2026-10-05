@@ -14,11 +14,12 @@ import { enroll, EnrollmentError, ProofVCError } from "../dist/index.js";
 const CLIENT_ID = "https://example.com/.well-known/proof-client.json";
 const ENROLL_URL =
   "https://api.fairfax.proof.com/verifiable-credentials/v1/x401-enroll";
+const LOCAL_ENROLL_URL =
+  "https://api.local.dev-notarize.com/verifiable-credentials/v1/x401-enroll";
 const PENDING = {
   status: "pending",
-  organization: { id: "or1", name: "Acme" },
-  owner_email: "bob@example.com",
   activation: "email_sent",
+  email: "b**@example.com",
 };
 
 const { publicKey, privateKey } = await generateKeyPair("ES256", {
@@ -48,7 +49,7 @@ async function withServer({ document = cimd(), respond }, fn) {
     const href = String(url);
     calls.push({ url: href, init });
     if (href === CLIENT_ID) return Response.json(document);
-    if (href === ENROLL_URL) return respond(init);
+    if (href === ENROLL_URL || href === LOCAL_ENROLL_URL) return respond(init);
     assert.fail(`unexpected fetch of ${href}`);
   };
   try {
@@ -131,11 +132,21 @@ test("accepts a KeyObject private key", async () => {
   );
 });
 
+test("returns an approval", async () => {
+  const approved = { status: "approved", activation: "complete" };
+  await withServer(
+    { respond: () => Response.json(approved, { status: 200 }) },
+    async () => {
+      assert.deepEqual(await enroll(params()), approved);
+    },
+  );
+});
+
 test("returns a rejection instead of throwing", async () => {
   const rejected = {
     status: "rejected",
-    reason: "existing_account",
-    manual_setup_url: "https://dev.proof.com/docs/x401-manual-setup",
+    reason: "unauthorized",
+    message: "Contact support@proof.com",
   };
   await withServer(
     { respond: () => Response.json(rejected, { status: 422 }) },
@@ -145,7 +156,7 @@ test("returns a rejection instead of throwing", async () => {
   );
 });
 
-test("reports an invalid client assertion with the server's description and link", async () => {
+test("reports an invalid client assertion with the server's description", async () => {
   await withServer(
     {
       respond: () =>
@@ -153,7 +164,6 @@ test("reports an invalid client assertion with the server's description and link
           {
             error: "invalid_client",
             error_description: "invalid client assertion",
-            error_uri: "https://dev.proof.com/docs/x401-manual-setup",
           },
           { status: 401 },
         ),
@@ -166,14 +176,12 @@ test("reports an invalid client assertion with the server's description and link
           error.code === "invalid_config" &&
           error.status === 401 &&
           error.message === "invalid client assertion" &&
-          error.response.error === "invalid_client" &&
-          error.response.error_uri ===
-            "https://dev.proof.com/docs/x401-manual-setup",
+          error.response.error === "invalid_client",
       ),
   );
 });
 
-test("reports a clean server error with the server's description and link", async () => {
+test("reports a clean server error with the server's description", async () => {
   await withServer(
     {
       respond: () =>
@@ -181,7 +189,6 @@ test("reports a clean server error with the server's description and link", asyn
           {
             error: "server_error",
             error_description: "enrollment could not be completed",
-            error_uri: "https://dev.proof.com/docs/x401-manual-setup",
           },
           { status: 500 },
         ),
@@ -194,10 +201,40 @@ test("reports a clean server error with the server's description and link", asyn
         assert.deepEqual(error.response, {
           error: "server_error",
           error_description: "enrollment could not be completed",
-          error_uri: "https://dev.proof.com/docs/x401-manual-setup",
         });
         return true;
       }),
+  );
+});
+
+test("treats a www. document host as its apex domain", async () => {
+  const clientId = "https://www.example.com/.well-known/proof-client.json";
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url) =>
+    String(url) === clientId
+      ? Response.json(cimd({ client_id: clientId }))
+      : Response.json(PENDING, { status: 202 });
+  try {
+    assert.deepEqual(
+      await enroll(params({ clientId, email: "Bob@Example.com" })),
+      PENDING,
+    );
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+test("accepts a mailbox off the document host in the localhost environment", async () => {
+  await withServer(
+    { respond: () => Response.json(PENDING, { status: 202 }) },
+    async () => {
+      assert.deepEqual(
+        await enroll(
+          params({ environment: "localhost", email: "bob@other.com" }),
+        ),
+        PENDING,
+      );
+    },
   );
 });
 
@@ -270,6 +307,14 @@ test("validates environment and email before fetching", async () => {
       await rejectsWithInvalidConfig(
         enroll(params({ email: "" })),
         /email address is required/,
+      );
+      await rejectsWithInvalidConfig(
+        enroll(params({ email: "bob@other.com" })),
+        /email address must be on example\.com/,
+      );
+      await rejectsWithInvalidConfig(
+        enroll(params({ email: "bob@sub.example.com" })),
+        /email address must be on example\.com/,
       );
       assert.deepEqual(calls, []);
     },
