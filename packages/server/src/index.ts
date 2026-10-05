@@ -44,7 +44,8 @@ export { createClientIdMetadataDocument } from "./client_id_metadata.ts";
 export type {
   EnrollParams,
   EnrollResult,
-  EnrollmentAccepted,
+  EnrollmentPending,
+  EnrollmentApproved,
   EnrollmentRejected,
   EnrollmentErrorResponse,
 } from "./enroll.ts";
