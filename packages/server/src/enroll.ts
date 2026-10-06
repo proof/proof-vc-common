@@ -171,11 +171,13 @@ export async function enroll(
   if (typeof email !== "string" || email.length === 0) {
     invalid("an email address is required");
   }
+  const emailDomain = email.slice(email.lastIndexOf("@") + 1).toLowerCase();
   if (
     environment !== "localhost" &&
-    email.slice(email.lastIndexOf("@") + 1).toLowerCase() !== host
+    emailDomain !== host &&
+    !(emailDomain.includes(".") && host.endsWith(`.${emailDomain}`))
   ) {
-    invalid(`the email address must be on ${host}`);
+    invalid(`the email address must be on ${host} or its registrable domain`);
   }
 
   const kid = await registeredKid(clientId, privateKey, config, options);
