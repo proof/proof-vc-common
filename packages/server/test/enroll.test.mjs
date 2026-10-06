@@ -224,6 +224,27 @@ test("treats a www. document host as its apex domain", async () => {
   }
 });
 
+test("accepts a mailbox on a parent domain of the document host", async () => {
+  const clientId = "https://app.example.com/.well-known/proof-client.json";
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url) =>
+    String(url) === clientId
+      ? Response.json(cimd({ client_id: clientId }))
+      : Response.json(PENDING, { status: 202 });
+  try {
+    assert.deepEqual(
+      await enroll(params({ clientId, email: "bob@example.com" })),
+      PENDING,
+    );
+    await rejectsWithInvalidConfig(
+      enroll(params({ clientId, email: "bob@ple.com" })),
+      /email address must be on app\.example\.com or its registrable domain/,
+    );
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
 test("accepts a mailbox off the document host in the localhost environment", async () => {
   await withServer(
     { respond: () => Response.json(PENDING, { status: 202 }) },

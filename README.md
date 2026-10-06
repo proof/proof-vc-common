@@ -292,7 +292,7 @@ const document = await createClientIdMetadataDocument({
 
 Proof creates your Verifier account from your [Client ID Metadata Document](#client-id-metadata-document).
 `enroll` signs a [`private_key_jwt`](https://datatracker.ietf.org/doc/html/rfc7523) client assertion with the private key published in the document.
-The email address is on the document's host, with `www.` counting as the apex domain: `you@example.com` for `https://www.example.com/.well-known/proof-client.json`.
+The email address is on the document's host or its registrable domain, with `www.` counting as the apex domain: `you@example.com` for `https://www.example.com/.well-known/proof-client.json` or `https://app.example.com/.well-known/proof-client.json`.
 
 ```
 npx @proof.com/proof-vc-server enroll https://example.com/.well-known/proof-client.json --email you@example.com --key private-key.pem --environment sandbox
