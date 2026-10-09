@@ -3,12 +3,9 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { generateKeyPair, jwtVerify } from "jose";
 
-import {
-  createVerifier,
-  ProofVCError,
-  DETACHED_SIGNATURE_HEADER,
-  SIGNATURES_PATH,
-} from "../dist/index.js";
+import { createVerifier, ProofVCError } from "../dist/index.js";
+
+const DETACHED_SIGNATURE_HEADER = "proof.com#sig-1";
 
 const SANDBOX_VP_TOKEN = readFileSync(
   new URL("./fixtures/sandbox-vp-token.txt", import.meta.url),
@@ -17,7 +14,8 @@ const SANDBOX_VP_TOKEN = readFileSync(
 const SANDBOX_VC = JSON.parse(
   Buffer.from(SANDBOX_VP_TOKEN, "base64url").toString("utf8"),
 ).proof_id_default[0];
-const SIGNATURES_URL = `https://api.fairfax.proof.com${SIGNATURES_PATH}`;
+const SIGNATURES_URL =
+  "https://api.fairfax.proof.com/verifiable-credentials/v1/x401-signatures";
 const RECORD_ID = "record-123";
 const CLIENT_ID = "https://verifier.example/.well-known/proof-client.json";
 
@@ -252,9 +250,4 @@ test("validates clientId, privateKeyFactory and timeout at construction", () => 
         error instanceof ProofVCError && error.code === "invalid_config",
     );
   }
-});
-
-test("exports the header name and the endpoint path", () => {
-  assert.equal(DETACHED_SIGNATURE_HEADER, "proof.com#sig-1");
-  assert.equal(SIGNATURES_PATH, "/verifiable-credentials/v1/x401-signatures");
 });

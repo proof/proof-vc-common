@@ -7,6 +7,7 @@ import {
   assertScopeOrDcql,
   assertBaseClientConfig,
   assertNonEmptyString,
+  assertPositiveInteger,
   type ClientConfig,
   type AuthorizationRequestParams,
 } from "@proof.com/proof-vc-common/internal";
@@ -15,17 +16,16 @@ import {
   type DCQLQuery,
   type Scope,
 } from "@proof.com/proof-vc-common";
-import type { JWK, CryptoKey, KeyObject } from "jose";
 import {
   encodeTransactionData,
   type TransactionData,
 } from "./transaction_data.ts";
 import { signRequestObject, requestObjectClaims } from "./secured_request.ts";
 import { fetchJson, type HttpConfig, type RequestOptions } from "./http.ts";
+import type { PrivateKey } from "./client_assertion.ts";
 
 export type { RequestOptions } from "./http.ts";
 
-export type PrivateKey = JWK | CryptoKey | KeyObject;
 export type PrivateKeyFactory = () => PrivateKey | Promise<PrivateKey>;
 
 export type ServerClientConfig = Omit<ClientConfig, "callbackUri"> &
@@ -82,15 +82,6 @@ function encodeTxData(
   return typeof transactionData === "object"
     ? encodeTransactionData(transactionData)
     : transactionData;
-}
-
-export function assertPositiveInteger(value: unknown, name: string): void {
-  if (!Number.isInteger(value) || (value as number) <= 0) {
-    throw new ProofVCError(
-      "invalid_config",
-      `\`${name}\` must be a positive integer`,
-    );
-  }
 }
 
 function assertServerClientConfig(config: ServerClientConfig): void {

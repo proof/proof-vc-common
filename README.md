@@ -521,7 +521,7 @@ if (
 
 #### Detached signatures
 
-Presentations delivered through [x401](https://x401.proof.com) arrive with the signature segment of both the Issuer-signed JWT and the Key Binding JWT detached. The Key Binding JWT header carries a critical `proof.com#sig-1` parameter ([RFC 7515 §4.1.11](https://www.rfc-editor.org/rfc/rfc7515#section-4.1.11)) holding the id of the detached signatures. `verify` and `verifyVPToken` fetch them from `POST /verifiable-credentials/v1/x401-signatures`, authenticated with a `private_key_jwt` client assertion built from your `clientId` and `privateKeyFactory`, splice them back and verify as usual:
+Presentations delivered through [x401](https://dev.proof.com/docs/x401) arrive with the signature segment of both the Issuer-signed JWT and the Key Binding JWT detached. The Key Binding JWT header carries a critical `proof.com#sig-1` parameter ([RFC 7515 §4.1.11](https://www.rfc-editor.org/rfc/rfc7515#section-4.1.11)) holding the id of the detached signatures. `verify` and `verifyVPToken` fetch them from `POST /verifiable-credentials/v1/x401-signatures`, authenticated with a `private_key_jwt` client assertion built from your `clientId` and `privateKeyFactory`, splice them back to verify:
 
 ```javascript
 import { createVerifier } from "@proof.com/proof-vc-server";
@@ -533,7 +533,7 @@ const verifier = createVerifier({
 });
 ```
 
-Verifiers can pay for x401 presentations with [x402](https://www.x402.org), otherwise Proof charges their default account payment method. The endpoint answers `402` with payment requirements until the request is repeated with a `PAYMENT-SIGNATURE` header. Pass an x402-capable `fetch` to pay automatically; without one, `verify` rejects with the `payment_required` error code.
+Verifiers can pay for x401 presentations with [x402](https://dev.proof.com/docs/x401-signatures#pay-with-x402), otherwise Proof charges their default account payment method. The endpoint answers `402` with payment requirements until the request is repeated with a `PAYMENT-SIGNATURE` header. Pass an x402-capable `fetch` to pay automatically; without one, `verify` rejects with the `payment_required` error code.
 
 ```javascript
 import { wrapFetchWithPaymentFromConfig } from "@x402/fetch";

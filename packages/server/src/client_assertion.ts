@@ -1,8 +1,16 @@
 import { randomUUID } from "node:crypto";
-import { SignJWT, calculateJwkThumbprint, exportJWK, type JWK } from "jose";
+import {
+  SignJWT,
+  calculateJwkThumbprint,
+  exportJWK,
+  type CryptoKey,
+  type JWK,
+  type KeyObject,
+} from "jose";
 import { ProofVCError } from "@proof.com/proof-vc-common";
-import type { PrivateKey } from "./client.ts";
 import { REQUEST_OBJECT_ALG } from "./secured_request.ts";
+
+export type PrivateKey = JWK | CryptoKey | KeyObject;
 
 export const CLIENT_ASSERTION_TYPE =
   "urn:ietf:params:oauth:client-assertion-type:jwt-bearer";

@@ -1,13 +1,13 @@
 import type { JWK } from "jose";
 import { ProofVCError, type Environment } from "@proof.com/proof-vc-common";
 import { BASE_URLS, resolveBaseUrl } from "@proof.com/proof-vc-common/internal";
-import type { PrivateKey } from "./client.ts";
 import { fetchJson, type HttpConfig, type RequestOptions } from "./http.ts";
 import {
   clientAssertionParams,
   jwkThumbprint,
   privateKeyJwk,
   signClientAssertion,
+  type PrivateKey,
 } from "./client_assertion.ts";
 
 export const ENROLLMENT_PATH = "/verifiable-credentials/v1/x401-enroll";

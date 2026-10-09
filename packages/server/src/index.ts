@@ -22,7 +22,6 @@ export { TX_DATA_TYPE, transactionData } from "./transaction_data.ts";
 
 export type {
   ServerClientConfig,
-  PrivateKey,
   PrivateKeyFactory,
   ServerAuthorizationRequestParams,
   ServerVCClient,
@@ -34,6 +33,7 @@ export type {
 export { DEFAULT_TIMEOUT_MS } from "./http.ts";
 export { DEFAULT_REQUEST_OBJECT_LIFETIME_SECONDS } from "./secured_request.ts";
 export { createClient } from "./client.ts";
+export type { PrivateKey } from "./client_assertion.ts";
 
 export type {
   ClientIdMetadataDocumentParams,
@@ -58,9 +58,3 @@ export type {
   Verifier,
 } from "./verifier.ts";
 export { createVerifier } from "./verifier.ts";
-
-export type { DetachedSignatures } from "./detached_signatures.ts";
-export {
-  DETACHED_SIGNATURE_HEADER,
-  SIGNATURES_PATH,
-} from "./detached_signatures.ts";

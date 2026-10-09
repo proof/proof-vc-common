@@ -13,6 +13,7 @@ import {
   warnOnce,
   assertOneOf,
   assertNonEmptyString,
+  assertPositiveInteger,
   credentialIssuer,
   BASE_URLS,
 } from "@proof.com/proof-vc-common/internal";
@@ -22,7 +23,7 @@ import { CREDENTIAL_IDS, isKnownCredentialId } from "./utils.ts";
 import { getProofCredential } from "./proof_credential_factory.ts";
 import { verifyChain } from "./certificates/chain_validator.ts";
 import { getTrustRoot } from "./certificates/trust_store/index.ts";
-import { assertPositiveInteger, type PrivateKeyFactory } from "./client.ts";
+import type { PrivateKeyFactory } from "./client.ts";
 import type { HttpConfig, RequestOptions } from "./http.ts";
 import { resolveDetachedSignatures } from "./detached_signatures.ts";
 

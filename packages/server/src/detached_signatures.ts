@@ -10,12 +10,12 @@ import {
 } from "./client_assertion.ts";
 import type { VerifierConfig } from "./verifier.ts";
 
-export const DETACHED_SIGNATURE_HEADER = "proof.com#sig-1";
-export const SIGNATURES_PATH = "/verifiable-credentials/v1/x401-signatures";
+const DETACHED_SIGNATURE_HEADER = "proof.com#sig-1";
+const SIGNATURES_PATH = "/verifiable-credentials/v1/x401-signatures";
 const PENDING_RETRY_LIMIT = 10;
 const DEFAULT_RETRY_AFTER_SECONDS = 2;
 
-export type DetachedSignatures = {
+type DetachedSignatures = {
   issuer_signature: string;
   kb_signature: string;
 };
@@ -33,7 +33,8 @@ function segments(jwt: string): Segments | undefined {
   return split.length === 3 ? (split as Segments) : undefined;
 }
 
-// The Issuer-signed JWT and the Key Binding JWT of a presentation that has one.
+// Splits a presentation into its Issuer-signed JWT and Key Binding JWT.
+// Returns undefined when the presentation has no Key Binding JWT.
 function compact(encodedSDJWT: string): Compact | undefined {
   const parts = encodedSDJWT.split("~");
   const issuer = segments(parts[0]!);
@@ -138,11 +139,9 @@ function nonEmptyString(value: unknown): value is string {
 }
 
 /**
- * Fetches the signatures detached from an x401 presentation, authenticated
- * with a client assertion. Proof answers 409 while the transaction is still
- * being finalized and 402 with x402 payment requirements when the
- * organization owes for the presentation: an x402-capable `fetch` in the
- * config pays them transparently.
+ * Fetches the detached signatures of an x401 presentation, retrying while they
+ * are not available yet. Pass an x402-capable `fetch` in the config to pay
+ * for them with x402.
  */
 export async function fetchDetachedSignatures(
   config: VerifierConfig,
