@@ -47,8 +47,8 @@ export async function jwkThumbprint(jwk: unknown): Promise<string | undefined> {
 }
 
 /**
- * Signs an RFC 7523 `private_key_jwt` client assertion addressed to one Proof
- * endpoint. Each assertion carries a fresh `jti`: Proof accepts it once.
+ * Signs an RFC 7523 `private_key_jwt` client assertion for the given audience.
+ * Sign a new assertion for each request.
  */
 export function signClientAssertion({
   clientId,

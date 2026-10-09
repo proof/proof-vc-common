@@ -59,9 +59,9 @@ function decodeHeader(encoded: string): Record<string, unknown> | undefined {
   }
 }
 
-// The detached signature record id carried by the Key Binding JWT header,
-// enforcing RFC 7515 `crit`: every critical parameter must be one this SDK
-// implements. Undefined when the header has no `crit`.
+// Reads the detached signatures id from the Key Binding JWT header. Throws
+// when the header lists a critical parameter this SDK does not support.
+// Returns undefined when the header has no `crit`.
 function detachedSignatureId({ kb }: Compact): string | undefined {
   const header = decodeHeader(kb[0]);
   const crit = header?.["crit"];
