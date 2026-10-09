@@ -12,6 +12,7 @@ import {
 import {
   warnOnce,
   assertOneOf,
+  assertNonEmptyString,
   credentialIssuer,
   BASE_URLS,
 } from "@proof.com/proof-vc-common/internal";
@@ -21,9 +22,14 @@ import { CREDENTIAL_IDS, isKnownCredentialId } from "./utils.ts";
 import { getProofCredential } from "./proof_credential_factory.ts";
 import { verifyChain } from "./certificates/chain_validator.ts";
 import { getTrustRoot } from "./certificates/trust_store/index.ts";
+import { assertPositiveInteger, type PrivateKeyFactory } from "./client.ts";
+import type { HttpConfig, RequestOptions } from "./http.ts";
+import { resolveDetachedSignatures } from "./detached_signatures.ts";
 
-export type VerifierConfig = {
+export type VerifierConfig = HttpConfig & {
   environment: Environment;
+  clientId?: string;
+  privateKeyFactory?: PrivateKeyFactory;
 };
 
 const SD_JWT_VC_TYP = "dc+sd-jwt";
@@ -94,19 +100,49 @@ function kbVerifierFor(kbAlg: SupportedAlg) {
 }
 
 export interface Verifier {
-  verify(params: VerifyParams): Promise<ProofCredential>;
-  verifyVPToken(params: VerifyVPTokenParams): Promise<VPToken>;
+  verify(
+    params: VerifyParams,
+    options?: RequestOptions,
+  ): Promise<ProofCredential>;
+  verifyVPToken(
+    params: VerifyVPTokenParams,
+    options?: RequestOptions,
+  ): Promise<VPToken>;
+}
+
+function assertVerifierConfig(config: VerifierConfig): void {
+  assertOneOf(config.environment, BASE_URLS, "environment");
+  if (config.clientId !== undefined) {
+    assertNonEmptyString(config.clientId, "clientId");
+  }
+  if (
+    config.privateKeyFactory !== undefined &&
+    typeof config.privateKeyFactory !== "function"
+  ) {
+    throw new ProofVCError(
+      "invalid_config",
+      "`privateKeyFactory` must be a function",
+    );
+  }
+  if (config.timeout !== undefined) {
+    assertPositiveInteger(config.timeout, "timeout");
+  }
 }
 
 export function createVerifier(config: VerifierConfig): Verifier {
-  assertOneOf(config.environment, BASE_URLS, "environment");
+  assertVerifierConfig(config);
   const trustRoot = trustRootFor(config.environment);
   const expectedIssuer = credentialIssuer(config.environment);
 
-  async function verify({
-    encodedSDJWT,
-    aud,
-  }: VerifyParams): Promise<ProofCredential> {
+  async function verify(
+    { encodedSDJWT: presented, aud }: VerifyParams,
+    options?: RequestOptions,
+  ): Promise<ProofCredential> {
+    const encodedSDJWT = await resolveDetachedSignatures(
+      config,
+      presented,
+      options,
+    );
     const decoded = await wrap("invalid_input", "malformed SD-JWT-VC", () =>
       new SDJwtVcInstance({ hasher }).decode(encodedSDJWT),
     );
@@ -176,10 +212,10 @@ export function createVerifier(config: VerifierConfig): Verifier {
     return getProofCredential(decoded);
   }
 
-  async function verifyVPToken({
-    encodedVPToken,
-    aud,
-  }: VerifyVPTokenParams): Promise<VPToken> {
+  async function verifyVPToken(
+    { encodedVPToken, aud }: VerifyVPTokenParams,
+    options?: RequestOptions,
+  ): Promise<VPToken> {
     const parsed: unknown = await wrap(
       "invalid_input",
       "malformed vp_token",
@@ -230,7 +266,10 @@ export function createVerifier(config: VerifierConfig): Verifier {
       const credentials: ProofCredential[] = [];
       for (const encodedSDJWT of presentations) {
         credentials.push(
-          await verify({ encodedSDJWT, ...(aud !== undefined && { aud }) }),
+          await verify(
+            { encodedSDJWT, ...(aud !== undefined && { aud }) },
+            options,
+          ),
         );
       }
       vpToken[credentialId] = credentials;

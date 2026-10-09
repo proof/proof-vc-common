@@ -1,15 +1,16 @@
-import { randomUUID } from "node:crypto";
-import { SignJWT, calculateJwkThumbprint, exportJWK, type JWK } from "jose";
+import type { JWK } from "jose";
 import { ProofVCError, type Environment } from "@proof.com/proof-vc-common";
 import { BASE_URLS, resolveBaseUrl } from "@proof.com/proof-vc-common/internal";
 import type { PrivateKey } from "./client.ts";
 import { fetchJson, type HttpConfig, type RequestOptions } from "./http.ts";
-import { REQUEST_OBJECT_ALG } from "./secured_request.ts";
+import {
+  clientAssertionParams,
+  jwkThumbprint,
+  privateKeyJwk,
+  signClientAssertion,
+} from "./client_assertion.ts";
 
 export const ENROLLMENT_PATH = "/verifiable-credentials/v1/x401-enroll";
-const CLIENT_ASSERTION_TYPE =
-  "urn:ietf:params:oauth:client-assertion-type:jwt-bearer";
-const CLIENT_ASSERTION_LIFETIME_SECONDS = 300;
 const LOCAL_HOST =
   /^(localhost|.*\.localhost|.*\.local|127\..*|0\.0\.0\.0|\[::1\])$/;
 
@@ -82,29 +83,6 @@ function assertPublicClientIdUrl(clientId: string): URL {
   return url;
 }
 
-function isJwk(key: PrivateKey): key is JWK {
-  return typeof key === "object" && "kty" in key;
-}
-
-async function privateKeyJwk(privateKey: PrivateKey): Promise<JWK> {
-  try {
-    return isJwk(privateKey) ? privateKey : await exportJWK(privateKey);
-  } catch (cause) {
-    const detail = cause instanceof Error ? cause.message : String(cause);
-    throw new ProofVCError("invalid_config", `invalid private key: ${detail}`, {
-      cause,
-    });
-  }
-}
-
-async function thumbprint(jwk: unknown): Promise<string | undefined> {
-  try {
-    return await calculateJwkThumbprint(jwk as JWK);
-  } catch {
-    return undefined;
-  }
-}
-
 async function registeredKid(
   clientId: string,
   privateKey: PrivateKey,
@@ -144,8 +122,8 @@ async function registeredKid(
   if (!Array.isArray(keys)) {
     invalid(`the client metadata document at ${clientId} has no jwks.keys`);
   }
-  const own = await thumbprint(await privateKeyJwk(privateKey));
-  const published = await Promise.all(keys.map(thumbprint));
+  const own = await jwkThumbprint(await privateKeyJwk(privateKey));
+  const published = await Promise.all(keys.map(jwkThumbprint));
   const index = published.findIndex(
     (candidate) => candidate !== undefined && candidate === own,
   );
@@ -185,16 +163,12 @@ export async function enroll(
     ENROLLMENT_PATH,
     resolveBaseUrl(environment),
   ).toString();
-  const issuedAt = Math.floor(Date.now() / 1000);
-  const assertion = await new SignJWT({})
-    .setProtectedHeader({ alg: REQUEST_OBJECT_ALG, kid })
-    .setIssuer(clientId)
-    .setSubject(clientId)
-    .setAudience(audience)
-    .setIssuedAt(issuedAt)
-    .setExpirationTime(issuedAt + CLIENT_ASSERTION_LIFETIME_SECONDS)
-    .setJti(randomUUID())
-    .sign(privateKey);
+  const assertion = await signClientAssertion({
+    clientId,
+    privateKey,
+    kid,
+    audience,
+  });
 
   let status: number;
   let data: Record<string, unknown>;
@@ -206,8 +180,7 @@ export async function enroll(
         method: "PUT",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({
-          client_assertion_type: CLIENT_ASSERTION_TYPE,
-          client_assertion: assertion,
+          ...clientAssertionParams(assertion),
           email,
         }).toString(),
       },

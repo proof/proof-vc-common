@@ -58,3 +58,9 @@ export type {
   Verifier,
 } from "./verifier.ts";
 export { createVerifier } from "./verifier.ts";
+
+export type { DetachedSignatures } from "./detached_signatures.ts";
+export {
+  DETACHED_SIGNATURE_HEADER,
+  SIGNATURES_PATH,
+} from "./detached_signatures.ts";

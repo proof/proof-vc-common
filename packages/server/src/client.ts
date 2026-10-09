@@ -84,7 +84,7 @@ function encodeTxData(
     : transactionData;
 }
 
-function assertPositiveInteger(value: unknown, name: string): void {
+export function assertPositiveInteger(value: unknown, name: string): void {
   if (!Number.isInteger(value) || (value as number) <= 0) {
     throw new ProofVCError(
       "invalid_config",
