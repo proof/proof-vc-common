@@ -79,6 +79,15 @@ export function assertNonEmptyString(
   }
 }
 
+export function assertPositiveInteger(value: unknown, name: string): void {
+  if (!Number.isInteger(value) || (value as number) <= 0) {
+    throw new ProofVCError(
+      "invalid_config",
+      `\`${name}\` must be a positive integer`,
+    );
+  }
+}
+
 export function assertOneOf<T extends string>(
   value: unknown,
   allowed: Record<T, unknown>,

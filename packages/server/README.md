@@ -24,6 +24,7 @@ Read our [documentation](https://dev.proof.com/docs/digital-credentials-overview
     - [Scopes](#scopes)
     - [Transaction Templates](#transaction-templates)
   - [Verify](#verify)
+    - [Detached signatures](#detached-signatures)
     - [Nonce](#nonce)
 - [Certificate Authority](#certificate-authority)
 - [Documentation](#documentation)
@@ -461,6 +462,41 @@ if (
   purchaseItem();
 }
 ```
+
+#### Detached signatures
+
+Presentations delivered through [x401](https://dev.proof.com/docs/x401) arrive with the signature segment of both the Issuer-signed JWT and the Key Binding JWT detached. The Key Binding JWT header carries a critical `proof.com#sig-1` parameter ([RFC 7515 §4.1.11](https://www.rfc-editor.org/rfc/rfc7515#section-4.1.11)) holding the id of the detached signatures. `verify` and `verifyVPToken` fetch them from `POST /verifiable-credentials/v1/x401-signatures`, authenticated with a `private_key_jwt` client assertion built from your `clientId` and `privateKeyFactory`, splice them back to verify:
+
+```javascript
+import { createVerifier } from "@proof.com/proof-vc-server";
+
+const verifier = createVerifier({
+  environment: "sandbox",
+  clientId: "https://verifier.example/.well-known/proof-client.json",
+  privateKeyFactory: () => privateKey, // the ES256 key published in your client metadata document
+});
+```
+
+Verifiers can pay for x401 presentations with [x402](https://dev.proof.com/docs/x401-signatures#pay-with-x402), otherwise Proof charges their default account payment method. The endpoint answers `402` with payment requirements until the request is repeated with a `PAYMENT-SIGNATURE` header. Pass an x402-capable `fetch` to pay automatically; without one, `verify` rejects with the `payment_required` error code.
+
+```javascript
+import { wrapFetchWithPaymentFromConfig } from "@x402/fetch";
+import { ExactEvmScheme } from "@x402/evm";
+import { privateKeyToAccount } from "viem/accounts";
+
+const wallet = privateKeyToAccount(process.env.EVM_PRIVATE_KEY);
+
+const verifier = createVerifier({
+  environment: "production",
+  clientId,
+  privateKeyFactory,
+  fetch: wrapFetchWithPaymentFromConfig(fetch, {
+    schemes: [{ network: "eip155:*", client: new ExactEvmScheme(wallet) }],
+  }),
+});
+```
+
+The endpoint can answer `409`; the verifier retries after the `Retry-After` delay.
 
 #### Nonce
 

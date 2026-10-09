@@ -4,6 +4,7 @@ export const DEFAULT_TIMEOUT_MS = 10_000;
 
 export type HttpConfig = {
   timeout?: number;
+  fetch?: typeof globalThis.fetch;
 };
 
 export type RequestOptions = {
@@ -31,7 +32,11 @@ export async function fetchJson({
   config,
   options,
   acceptStatus,
-}: JsonRequest): Promise<{ status: number; data: Record<string, unknown> }> {
+}: JsonRequest): Promise<{
+  status: number;
+  headers: Headers;
+  data: Record<string, unknown>;
+}> {
   const signals = [AbortSignal.timeout(config.timeout ?? DEFAULT_TIMEOUT_MS)];
   if (options?.signal !== undefined) {
     signals.push(options.signal);
@@ -39,7 +44,7 @@ export async function fetchJson({
 
   let response: Response;
   try {
-    response = await fetch(url, {
+    response = await (config.fetch ?? fetch)(url, {
       ...init,
       signal: AbortSignal.any(signals),
     });
@@ -79,5 +84,9 @@ export async function fetchJson({
       `${description} returned a non-object JSON body (${response.status})`,
     );
   }
-  return { status: response.status, data: data as Record<string, unknown> };
+  return {
+    status: response.status,
+    headers: response.headers,
+    data: data as Record<string, unknown>,
+  };
 }
