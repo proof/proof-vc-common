@@ -35,9 +35,6 @@ export type AuthorizationRequestParams = BaseAuthorizationRequestParams &
   );
 
 export const BASE_URLS = {
-  localhost: "https://api.local.dev-notarize.com",
-  next: "https://api.next.proof.com",
-  staging: "https://api.staging.proof.com",
   sandbox: "https://api.fairfax.proof.com",
   production: "https://api.proof.com",
 } satisfies Record<Environment, string>;

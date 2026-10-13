@@ -1,5 +1,4 @@
-export type Environment =
-  "localhost" | "next" | "staging" | "sandbox" | "production";
+export type Environment = "sandbox" | "production";
 export type ResponseMode = "fragment" | "direct_post";
 export type ResponseType = "vp_token";
 export type KnownScope =
