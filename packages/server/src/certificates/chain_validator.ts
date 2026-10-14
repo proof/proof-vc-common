@@ -5,6 +5,14 @@ function fail(message: string): never {
   throw new ProofVCError("verification_failed", message);
 }
 
+function certDate(value: string): Date {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    fail(`Unparseable certificate date: ${value}`);
+  }
+  return date;
+}
+
 export function verifyChain(
   chain: X509Certificate[],
   root: X509Certificate,
@@ -24,8 +32,8 @@ export function verifyChain(
     const cert = full[i]!;
     const issuer = full[i + 1]!;
 
-    const validFrom = new Date(cert.validFromDate);
-    const validTo = new Date(cert.validToDate);
+    const validFrom = certDate(cert.validFrom);
+    const validTo = certDate(cert.validTo);
     if (now < validFrom || now > validTo) {
       fail(`Certificate at index ${i} is expired or not yet valid`);
     }
@@ -40,7 +48,7 @@ export function verifyChain(
     }
   }
 
-  if (now > new Date(root.validToDate)) {
+  if (now > certDate(root.validTo)) {
     fail("Root certificate expired");
   }
   if (!root.verify(root.publicKey)) {

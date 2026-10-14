@@ -73,3 +73,28 @@ test("rejects a valid chain against a different root", () => {
 test("rejects an empty chain", () => {
   rejects([], /empty chain/);
 });
+
+const withValidity = (cert, overrides) =>
+  Object.create(cert, {
+    validFrom: {
+      value: "validFrom" in overrides ? overrides.validFrom : cert.validFrom,
+    },
+    validTo: {
+      value: "validTo" in overrides ? overrides.validTo : cert.validTo,
+    },
+  });
+
+test("rejects an expired leaf", () => {
+  const expired = withValidity(leaf, { validTo: "Jan  1 00:00:00 2000 GMT" });
+  rejects([expired, int], /Certificate at index 0 is expired or not yet valid/);
+});
+
+test("rejects a leaf that is not yet valid", () => {
+  const future = withValidity(leaf, { validFrom: "Jan  1 00:00:00 2100 GMT" });
+  rejects([future, int], /Certificate at index 0 is expired or not yet valid/);
+});
+
+test("rejects an unparseable validity date instead of skipping the check", () => {
+  const broken = withValidity(leaf, { validTo: undefined });
+  rejects([broken, int], /Unparseable certificate date/);
+});
