@@ -13,7 +13,7 @@ Prints Proof's JSON response on stdout, or a JSON error on stderr.
 Options:
   --email        Email of the account owner. The activation link is sent there.
   --key          Path to the ES256 private key (PEM or JWK) whose public key is published in the document.
-  --environment  production (default), sandbox, staging, next or localhost.
+  --environment  production (default) or sandbox.
   --help         Show this help.
 `;
 

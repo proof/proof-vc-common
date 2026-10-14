@@ -1,6 +1,10 @@
 import type { JWK } from "jose";
 import { ProofVCError, type Environment } from "@proof.com/proof-vc-common";
-import { BASE_URLS, resolveBaseUrl } from "@proof.com/proof-vc-common/internal";
+import {
+  assertOneOf,
+  BASE_URLS,
+  resolveBaseUrl,
+} from "@proof.com/proof-vc-common/internal";
 import { fetchJson, type HttpConfig, type RequestOptions } from "./http.ts";
 import {
   clientAssertionParams,
@@ -140,18 +144,13 @@ export async function enroll(
   { environment, clientId, email, privateKey, ...config }: EnrollParams,
   options?: RequestOptions,
 ): Promise<EnrollResult> {
-  if (!Object.hasOwn(BASE_URLS, environment)) {
-    invalid(
-      `the environment must be one of ${Object.keys(BASE_URLS).join(", ")}`,
-    );
-  }
+  assertOneOf(environment, BASE_URLS, "environment");
   const host = assertPublicClientIdUrl(clientId).hostname.replace(/^www\./, "");
   if (typeof email !== "string" || email.length === 0) {
     invalid("an email address is required");
   }
   const emailDomain = email.slice(email.lastIndexOf("@") + 1).toLowerCase();
   if (
-    environment !== "localhost" &&
     emailDomain !== host &&
     !(emailDomain.includes(".") && host.endsWith(`.${emailDomain}`))
   ) {

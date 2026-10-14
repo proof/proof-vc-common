@@ -245,20 +245,6 @@ test("accepts a mailbox on a parent domain of the document host", async () => {
   }
 });
 
-test("accepts a mailbox off the document host in the localhost environment", async () => {
-  await withServer(
-    { respond: () => Response.json(PENDING, { status: 202 }) },
-    async () => {
-      assert.deepEqual(
-        await enroll(
-          params({ environment: "localhost", email: "bob@other.com" }),
-        ),
-        PENDING,
-      );
-    },
-  );
-});
-
 test("rejects a document whose client_id differs from its URL", async () => {
   await withServer(
     { document: cimd({ client_id: "https://example.com/other" }) },
@@ -322,8 +308,8 @@ test("validates environment and email before fetching", async () => {
     { respond: () => assert.fail("must not enroll") },
     async (calls) => {
       await rejectsWithInvalidConfig(
-        enroll(params({ environment: "prod" })),
-        /environment must be one of/,
+        enroll(params({ environment: "staging" })),
+        /`environment` must be one of "sandbox", "production"/,
       );
       await rejectsWithInvalidConfig(
         enroll(params({ email: "" })),

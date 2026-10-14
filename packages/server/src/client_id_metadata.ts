@@ -41,7 +41,7 @@ function assertClientIdUrl(clientId: string, environment: Environment): void {
     invalid("`clientId` must be an https URL");
   }
   const localhost =
-    environment !== "production" &&
+    environment === "sandbox" &&
     url.protocol === "http:" &&
     url.hostname === "localhost";
   if (url.protocol !== "https:" && !localhost) {

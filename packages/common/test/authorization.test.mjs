@@ -121,7 +121,7 @@ test("createClient rejects invalid config at construction", () => {
   const cases = [
     [
       { ...CONFIG, environment: "prod" },
-      /`environment` must be one of "localhost", "next", "staging", "sandbox", "production"/,
+      /`environment` must be one of "sandbox", "production"/,
     ],
     [{ ...CONFIG, clientId: "" }, /`clientId` must be a non-empty string/],
     [
