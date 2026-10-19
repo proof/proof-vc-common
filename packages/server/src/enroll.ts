@@ -87,6 +87,16 @@ function assertPublicClientIdUrl(clientId: string): URL {
   return url;
 }
 
+function assertEmailOnHost(email: string, host: string): void {
+  const emailDomain = email.slice(email.lastIndexOf("@") + 1).toLowerCase();
+  if (
+    emailDomain !== host &&
+    !(emailDomain.includes(".") && host.endsWith(`.${emailDomain}`))
+  ) {
+    invalid(`the email address must be on ${host} or its registrable domain`);
+  }
+}
+
 async function registeredKid(
   clientId: string,
   privateKey: PrivateKey,
@@ -149,12 +159,8 @@ export async function enroll(
   if (typeof email !== "string" || email.length === 0) {
     invalid("an email address is required");
   }
-  const emailDomain = email.slice(email.lastIndexOf("@") + 1).toLowerCase();
-  if (
-    emailDomain !== host &&
-    !(emailDomain.includes(".") && host.endsWith(`.${emailDomain}`))
-  ) {
-    invalid(`the email address must be on ${host} or its registrable domain`);
+  if (environment === "production") {
+    assertEmailOnHost(email, host);
   }
 
   const kid = await registeredKid(clientId, privateKey, config, options);
