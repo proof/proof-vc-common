@@ -216,7 +216,13 @@ test("treats a www. document host as its apex domain", async () => {
       : Response.json(PENDING, { status: 202 });
   try {
     assert.deepEqual(
-      await enroll(params({ clientId, email: "Bob@Example.com" })),
+      await enroll(
+        params({
+          environment: "production",
+          clientId,
+          email: "Bob@Example.com",
+        }),
+      ),
       PENDING,
     );
   } finally {
@@ -233,16 +239,36 @@ test("accepts a mailbox on a parent domain of the document host", async () => {
       : Response.json(PENDING, { status: 202 });
   try {
     assert.deepEqual(
-      await enroll(params({ clientId, email: "bob@example.com" })),
+      await enroll(
+        params({
+          environment: "production",
+          clientId,
+          email: "bob@example.com",
+        }),
+      ),
       PENDING,
     );
     await rejectsWithInvalidConfig(
-      enroll(params({ clientId, email: "bob@ple.com" })),
+      enroll(
+        params({ environment: "production", clientId, email: "bob@ple.com" }),
+      ),
       /email address must be on app\.example\.com or its registrable domain/,
     );
   } finally {
     globalThis.fetch = realFetch;
   }
+});
+
+test("sandbox accepts an email on any domain", async () => {
+  await withServer(
+    { respond: () => Response.json(PENDING, { status: 202 }) },
+    async () => {
+      assert.deepEqual(
+        await enroll(params({ email: "bob@other.com" })),
+        PENDING,
+      );
+    },
+  );
 });
 
 test("rejects a document whose client_id differs from its URL", async () => {
@@ -316,11 +342,13 @@ test("validates environment and email before fetching", async () => {
         /email address is required/,
       );
       await rejectsWithInvalidConfig(
-        enroll(params({ email: "bob@other.com" })),
+        enroll(params({ environment: "production", email: "bob@other.com" })),
         /email address must be on example\.com/,
       );
       await rejectsWithInvalidConfig(
-        enroll(params({ email: "bob@sub.example.com" })),
+        enroll(
+          params({ environment: "production", email: "bob@sub.example.com" }),
+        ),
         /email address must be on example\.com/,
       );
       assert.deepEqual(calls, []);
