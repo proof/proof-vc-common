@@ -19,7 +19,7 @@ import {
 } from "@proof.com/proof-vc-common/internal";
 
 import type { ProofCredential, TrustRoot, VPToken } from "./types.ts";
-import { CREDENTIAL_IDS, isKnownCredentialId } from "./utils.ts";
+import { isKnownCredentialId } from "./utils.ts";
 import { getProofCredential } from "./proof_credential_factory.ts";
 import { verifyChain } from "./certificates/chain_validator.ts";
 import { getTrustRoot } from "./certificates/trust_store/index.ts";
@@ -234,12 +234,8 @@ export function createVerifier(config: VerifierConfig): Verifier {
     }
     const records = parsed as Record<string, unknown>;
 
-    const vpToken = {} as VPToken;
-    const credentialIds = new Set<string>([
-      ...CREDENTIAL_IDS,
-      ...Object.keys(records),
-    ]);
-    for (const credentialId of credentialIds) {
+    const vpToken: VPToken = {};
+    for (const [credentialId, presentations] of Object.entries(records)) {
       if (credentialId in Object.prototype) {
         throw new ProofVCError(
           "invalid_input",
@@ -252,9 +248,6 @@ export function createVerifier(config: VerifierConfig): Verifier {
           `vp_token contains credential id "${credentialId}" which is not known to this version of the Proof VC SDK; upgrade to a newer version`,
         );
       }
-      const presentations = Object.hasOwn(records, credentialId)
-        ? records[credentialId]
-        : [];
       if (
         !Array.isArray(presentations) ||
         !presentations.every((p) => typeof p === "string")

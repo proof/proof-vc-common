@@ -1,6 +1,11 @@
 import type { CredentialType, Format } from "@proof.com/proof-vc-common";
 import type { ProofCredential } from "./types.ts";
 import type { SDJwt } from "@sd-jwt/core";
+import { TX_DATA_CLAIM } from "./transaction_data.ts";
+import type {
+  TransactionDataPayload,
+  TransactionDataType,
+} from "./transaction_data.ts";
 
 export type { ProofCredential } from "./types.ts";
 
@@ -45,6 +50,15 @@ abstract class Credential implements ProofCredential {
 
   public getNonce(): string | undefined {
     return this.sdjwt.kbJwt?.payload?.nonce;
+  }
+
+  public getTransactionData<T extends TransactionDataType>(
+    type: T,
+  ): TransactionDataPayload<T> | undefined {
+    const payload: Record<string, unknown> | undefined =
+      this.sdjwt.kbJwt?.payload;
+    return payload?.[TX_DATA_CLAIM[type]] as
+      TransactionDataPayload<T> | undefined;
   }
 
   public toJSON(): Record<string, unknown> {

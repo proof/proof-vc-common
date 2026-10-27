@@ -6,7 +6,20 @@ export const TX_DATA_TYPE = {
   PAYMENT_MANDATE: "urn:proof:params:vc:transaction-data:payment-mandate:v1",
   PAYMENT_ITEMIZED: "urn:proof:params:vc:transaction-data:payment-itemized:v1",
   SESSION_DATA: "urn:proof:params:vc:transaction-data:session-data",
+  MPP_PAYMENT_CHALLENGE:
+    "urn:proof:params:vc:transaction-data:mpp-payment-challenge:v1",
 } as const;
+
+export type TransactionDataType =
+  (typeof TX_DATA_TYPE)[keyof typeof TX_DATA_TYPE];
+
+export const TX_DATA_CLAIM = {
+  [TX_DATA_TYPE.WIRE_INSTRUCTIONS]: "wire_instructions_v1",
+  [TX_DATA_TYPE.PAYMENT_MANDATE]: "payment_mandate_v1",
+  [TX_DATA_TYPE.PAYMENT_ITEMIZED]: "payment_itemized_v1",
+  [TX_DATA_TYPE.SESSION_DATA]: "session_data",
+  [TX_DATA_TYPE.MPP_PAYMENT_CHALLENGE]: "mpp_payment_challenge_v1",
+} as const satisfies Record<TransactionDataType, string>;
 
 const CREDENTIAL_IDS = [DEFAULT_CREDENTIAL_ID] as const;
 
@@ -63,6 +76,17 @@ export type SessionDataPayload = {
   device_id?: string;
 };
 
+export type MppPaymentChallengePayload = {
+  challenge_id: string;
+  realm: string;
+  method: string;
+  intent: string;
+  amount: string;
+  currency: string;
+  recipient: string;
+  expires?: string;
+};
+
 type Envelope<T extends string, P> = {
   type: T;
   credential_ids: readonly string[];
@@ -86,11 +110,22 @@ export type SessionDataTransactionData = Envelope<
   SessionDataPayload
 >;
 
+export type MppPaymentChallengeTransactionData = Envelope<
+  typeof TX_DATA_TYPE.MPP_PAYMENT_CHALLENGE,
+  MppPaymentChallengePayload
+>;
+
 export type TransactionData =
   | WireInstructionsTransactionData
   | PaymentMandateTransactionData
   | PaymentItemizedTransactionData
-  | SessionDataTransactionData;
+  | SessionDataTransactionData
+  | MppPaymentChallengeTransactionData;
+
+export type TransactionDataPayload<T extends TransactionDataType> = Extract<
+  TransactionData,
+  { type: T }
+>["payload"];
 
 export const transactionData = {
   wireInstructions(
@@ -125,6 +160,31 @@ export const transactionData = {
       type: TX_DATA_TYPE.SESSION_DATA,
       credential_ids: CREDENTIAL_IDS,
       payload,
+    };
+  },
+  mppPaymentChallenge({
+    challenge_id,
+    realm,
+    method,
+    intent,
+    amount,
+    currency,
+    recipient,
+    expires,
+  }: MppPaymentChallengePayload): MppPaymentChallengeTransactionData {
+    return {
+      type: TX_DATA_TYPE.MPP_PAYMENT_CHALLENGE,
+      credential_ids: CREDENTIAL_IDS,
+      payload: {
+        challenge_id,
+        realm,
+        method,
+        intent,
+        amount,
+        currency,
+        recipient,
+        ...(expires !== undefined && { expires }),
+      },
     };
   },
 } as const;

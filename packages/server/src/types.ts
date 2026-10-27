@@ -4,6 +4,10 @@ import type {
   CredentialType,
   Format,
 } from "@proof.com/proof-vc-common";
+import type {
+  TransactionDataPayload,
+  TransactionDataType,
+} from "./transaction_data.ts";
 
 export type TrustRoot = "development" | "production";
 
@@ -13,8 +17,11 @@ export interface ProofCredential {
   getClaims(): Record<string, unknown>;
   getSDJWT(): SDJwt;
   getNonce(): string | undefined;
+  getTransactionData<T extends TransactionDataType>(
+    type: T,
+  ): TransactionDataPayload<T> | undefined;
   toJSON(): Record<string, unknown>;
 }
 
-export type VPToken = Record<CredentialID, ProofCredential[]> &
-  Record<string, ProofCredential[]>;
+export type VPToken = Partial<Record<CredentialID, ProofCredential[]>> &
+  Record<string, ProofCredential[] | undefined>;
