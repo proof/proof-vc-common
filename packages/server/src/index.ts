@@ -12,11 +12,15 @@ export type {
   PaymentMandateTransactionData,
   PaymentItemizedTransactionData,
   SessionDataTransactionData,
+  MppPaymentChallengeTransactionData,
+  TransactionDataType,
+  TransactionDataPayload,
   WireInstructionsPayload,
   PaymentMandatePayload,
   PaymentItemizedPayload,
   PaymentItemizedItem,
   SessionDataPayload,
+  MppPaymentChallengePayload,
 } from "./transaction_data.ts";
 export { TX_DATA_TYPE, transactionData } from "./transaction_data.ts";
 

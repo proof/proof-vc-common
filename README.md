@@ -470,6 +470,56 @@ const redirect = await proof.authorizationUrl({
 });
 ```
 
+---
+
+**urn:proof:params:vc:transaction-data:mpp-payment-challenge:v1**
+
+```javascript
+import { createClient, transactionData } from "@proof.com/proof-vc-server";
+
+const proof = createClient({
+  environment: "sandbox",
+  clientId: "verifier-demo",
+  callbackUri: "https://example.com/verify_vp_token",
+});
+
+const data = transactionData.mppPaymentChallenge({
+  challenge_id: "x7Tg2pLqR9mKvNwY3hBcZa",
+  realm: "api.example.com",
+  method: "tempo",
+  intent: "charge",
+  amount: "12.50",
+  currency: "USD",
+  recipient: "0x742d35Cc6634C0532925a3b844Bc9e7595f8fE21",
+  expires: "2026-10-26T12:00:00Z",
+});
+const redirect = await proof.authorizationUrl({
+  nonce: "3e8e4918-e9fb-453a-a538-81152be15c1b",
+  scope: "urn:proof:params:scope:verifiable-credentials:basic",
+  transactionData: data,
+});
+```
+
+---
+
+The signed transaction data is a claim of the Key Binding JWT. After [Verify](#verify), `getTransactionData(type)` returns it, or `undefined` when the Key Binding JWT has no claim for that type:
+
+```javascript
+import { TX_DATA_TYPE } from "@proof.com/proof-vc-server";
+
+const challenge = credential.getTransactionData(
+  TX_DATA_TYPE.MPP_PAYMENT_CHALLENGE,
+);
+```
+
+| type                                                            | Key Binding JWT claim      |
+| --------------------------------------------------------------- | -------------------------- |
+| `urn:proof:params:vc:transaction-data:wire-instructions:v1`     | `wire_instructions_v1`     |
+| `urn:proof:params:vc:transaction-data:payment-itemized:v1`      | `payment_itemized_v1`      |
+| `urn:proof:params:vc:transaction-data:payment-mandate:v1`       | `payment_mandate_v1`       |
+| `urn:proof:params:vc:transaction-data:session-data`             | `session_data`             |
+| `urn:proof:params:vc:transaction-data:mpp-payment-challenge:v1` | `mpp_payment_challenge_v1` |
+
 ### Verify
 
 Verification runs server-side. Create a verifier for the same `environment` you used in the request and reuse it: `production` verifies against the Proof Root CA R1, `sandbox` against the Development root (see [Certificate Authority](#certificate-authority)). A credential issued by another environment is rejected on its `iss`. Pass your `client_id` as `aud` to check the Key Binding JWT audience when one is present.
@@ -496,7 +546,7 @@ if (
 }
 ```
 
-`verifyVPToken` returns the verified credentials keyed by DCQL credential id (`proof_id_default` for the `basic` scope).
+`verifyVPToken` returns the verified credentials keyed by DCQL credential id (`proof_id_default` for the `basic` scope), for the credential ids present in the `vp_token`.
 
 Verify a single SD-JWT-VC:
 

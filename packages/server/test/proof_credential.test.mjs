@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { PROOF_CREDENTIAL_V1_VCT } from "../dist/index.js";
+import { PROOF_CREDENTIAL_V1_VCT, TX_DATA_TYPE } from "../dist/index.js";
 import { getProofCredential } from "../dist/proof_credential_factory.js";
 
 const sdjwtWith = (claims) => ({ getClaims: async () => claims });
@@ -76,4 +76,32 @@ test("leaves isNationalUS undefined when is_national is absent", async () => {
 
   assert.equal(credential.isNationalUS, undefined);
   assert.equal(credential.givenName, "Frodo");
+});
+
+test("getTransactionData reads the KB-JWT claim of the transaction data type", async () => {
+  const challenge = { challenge_id: "x7Tg2pLqR9mKvNwY3hBcZa", amount: "12.50" };
+  const credential = await getProofCredential({
+    getClaims: async () => ({ vct: PROOF_CREDENTIAL_V1_VCT }),
+    kbJwt: { payload: { nonce: "n-1", mpp_payment_challenge_v1: challenge } },
+  });
+
+  assert.deepEqual(
+    credential.getTransactionData(TX_DATA_TYPE.MPP_PAYMENT_CHALLENGE),
+    challenge,
+  );
+  assert.equal(
+    credential.getTransactionData(TX_DATA_TYPE.PAYMENT_ITEMIZED),
+    undefined,
+  );
+});
+
+test("getTransactionData returns undefined without a KB-JWT", async () => {
+  const credential = await getProofCredential(
+    sdjwtWith({ vct: PROOF_CREDENTIAL_V1_VCT }),
+  );
+
+  assert.equal(
+    credential.getTransactionData(TX_DATA_TYPE.MPP_PAYMENT_CHALLENGE),
+    undefined,
+  );
 });

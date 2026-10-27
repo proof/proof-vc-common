@@ -6,6 +6,7 @@ import {
   createVerifier,
   ProofVCError,
   ProofCredentialV1,
+  TX_DATA_TYPE,
 } from "../dist/index.js";
 
 const fixture = (name) =>
@@ -137,6 +138,22 @@ test("a sandbox ProofCredentialV1 passes signature, KB, sd_hash, chain, issuer a
   assert.equal(credential.isOver21, undefined);
   assert.equal(credential.birthDate, undefined);
   assert.equal(credential.getNonce(), SANDBOX_NONCE);
+  assert.deepEqual(
+    credential.getTransactionData(TX_DATA_TYPE.PAYMENT_ITEMIZED),
+    {
+      title: "Drive Shaft",
+      description: "The Roadhouse (18+), May 6 2026",
+      currency: "USD",
+      items: [
+        { quantity: 2, unit_cost: 40, label: "General Admission" },
+        { quantity: 2, unit_cost: 11.4, label: "Fees" },
+      ],
+    },
+  );
+  assert.equal(
+    credential.getTransactionData(TX_DATA_TYPE.MPP_PAYMENT_CHALLENGE),
+    undefined,
+  );
 });
 
 test("aud is optional and skipped when omitted", async () => {
@@ -167,7 +184,7 @@ test("verifyVPToken verifies a raw sandbox vp_token", async () => {
     }),
   );
   assert.equal(vpToken.proof_id_default.length, 1);
-  assert.deepEqual(vpToken.proof_id_nationality_us, []);
+  assert.deepEqual(Object.keys(vpToken), ["proof_id_default"]);
   assert.equal(vpToken.proof_id_default[0].getNonce(), SANDBOX_NONCE);
 });
 
@@ -176,11 +193,7 @@ test("verifyVPToken verifies presentations under an unknown credential id", asyn
   const vpToken = await withFixedTime(() =>
     sandbox.verifyVPToken({ encodedVPToken, aud: SANDBOX_AUD }),
   );
-  assert.deepEqual(Object.keys(vpToken).sort(), [
-    "proof_id_default",
-    "proof_id_future",
-    "proof_id_nationality_us",
-  ]);
+  assert.deepEqual(Object.keys(vpToken), ["proof_id_future"]);
   assert.ok(vpToken.proof_id_future[0] instanceof ProofCredentialV1);
 });
 
@@ -274,11 +287,7 @@ test("keeps unknown credential ids and warns once per id", async () => {
   const warnings = await withCapturedWarnings(async () => {
     const first = await sandbox.verifyVPToken({ encodedVPToken });
     const second = await sandbox.verifyVPToken({ encodedVPToken });
-    assert.deepEqual(first, {
-      proof_id_default: [],
-      proof_id_nationality_us: [],
-      proof_id_other: [],
-    });
+    assert.deepEqual(first, { proof_id_other: [] });
     assert.deepEqual(second, first);
   });
   assert.equal(warnings.length, 1);
@@ -323,12 +332,9 @@ test("rejects a credential id whose value is not an array of strings", async () 
   }
 });
 
-test("verifyVPToken populates every credential id absent from the response", async () => {
+test("verifyVPToken returns only the credential ids present in the response", async () => {
   const vpToken = await sandbox.verifyVPToken({
     encodedVPToken: encodeVPToken({}),
   });
-  assert.deepEqual(vpToken, {
-    proof_id_default: [],
-    proof_id_nationality_us: [],
-  });
+  assert.deepEqual(vpToken, {});
 });
