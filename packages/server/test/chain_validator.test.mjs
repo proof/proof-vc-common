@@ -75,12 +75,11 @@ test("rejects an empty chain", () => {
 });
 
 const withValidity = (cert, overrides) =>
-  Object.create(cert, {
-    validFrom: {
-      value: "validFrom" in overrides ? overrides.validFrom : cert.validFrom,
-    },
-    validTo: {
-      value: "validTo" in overrides ? overrides.validTo : cert.validTo,
+  new Proxy(cert, {
+    get(target, prop) {
+      if (prop in overrides) return overrides[prop];
+      const value = Reflect.get(target, prop, target);
+      return typeof value === "function" ? value.bind(target) : value;
     },
   });
 
