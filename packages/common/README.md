@@ -1,82 +1,80 @@
-# Proof Digital Credentials
+# proof-vc-common
 
-<img src="https://raw.githubusercontent.com/proof/proof-vc-common/main/docs/proof-logo.svg" alt="drawing" width="450"/>
+proof-vc-common lets your website request a Proof Digital ID, and proof-vc-server lets your server
+verify it.
 
-_A digital passport. Verified once, usable everywhere._
+Your website sends the user to Proof with an
+[OpenID for Verifiable Presentations](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html)
+(OID4VP) authorization request. The user presents their Digital ID, and Proof sends the presentation
+(`vp_token`) back to your callback. Your server verifies the presentation and reads the user's
+claims.
 
-Read our [documentation](https://dev.proof.com/docs/digital-credentials-overview) or [try it](https://try.proof.com)!
+For a ready-made button, use [proof-vc-web](https://github.com/proof/proof-vc-web). To protect an
+HTTP endpoint with [x401](https://x401.proof.com/spec/latest/), use
+[x401-workers](https://github.com/proof/x401-workers).
 
-## Table of Contents
-
-- [Packages](#packages)
 - [Installation](#installation)
-- [Getting Started](#getting-started)
-  - [Client Side](#client-side)
-  - [Response Modes](#response-modes)
-- [Verifiable Credential Presentation](#verifiable-credential-presentation)
-  - [Credential Type](#credential-type)
-  - [Request](#request)
-    - [Scopes](#scopes)
-- [Documentation](#documentation)
+- [Quickstart](#quickstart)
+- [Usage](#usage)
+  - [Request specific claims](#request-specific-claims)
+  - [Do more on your server](#do-more-on-your-server)
+- [Reference](#reference)
+- [Errors](#errors)
+- [Links](#links)
 - [Contributing](#contributing)
-
-## Packages
-
-| Package                                                                                                | Runtime             | Usage                                                                                                                               | Runtime deps      |
-| ------------------------------------------------------------------------------------------------------ | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
-| **[`@proof.com/proof-vc-common`](https://github.com/proof/proof-vc-common/blob/main/packages/common)** | browser **or** Node | Request a Verifiable Presentation                                                                                                   | **0** ✅          |
-| **[`@proof.com/proof-vc-server`](https://github.com/proof/proof-vc-common/blob/main/packages/server)** | Node                | `proof-vc-common` **plus** Presentation Verification, Secured Authorization Requests, Transaction Templates and Verifier Enrollment | sd-jwt, owf, jose |
+- [License](#license)
 
 ## Installation
 
-Browser / Node:
+Install proof-vc-common in your website:
 
-```
+```sh
 npm install @proof.com/proof-vc-common
 ```
 
-Node:
+Install proof-vc-server on your server. It includes proof-vc-common.
 
-```
+```sh
 npm install @proof.com/proof-vc-server
 ```
 
-Proof implements the [OpenID for Verifiable Presentations 1.0](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html) specification.
-[Setup an OAuth Application](https://dev.proof.com/docs/oauth-client-credentials) in your Proof account to get your `client_id`.
+| Package                      | Runtime       | Use it to                                                                          |
+| ---------------------------- | ------------- | ---------------------------------------------------------------------------------- |
+| `@proof.com/proof-vc-common` | Browser, Node | Build the authorization request URL and read the response. No runtime dependencies |
+| `@proof.com/proof-vc-server` | Node 22.12+   | Everything in proof-vc-common, plus verification, PAR, signed requests and more    |
 
-## Getting Started
+You need a Proof client ID. [Set up an OAuth application](https://dev.proof.com/docs/oauth-client-credentials)
+in your Proof account, and add your callback URL to its redirect URIs.
 
-### Client Side
+## Quickstart
 
-You can request a Verifiable Presentation in the browser by using `createClient` and `authorizationUrl` to craft an Authorization Request URL.
-Either `fragment` or `direct_post` [Response Mode](#response-modes) are supported (defaults to `fragment`).
+Write a new random `nonce` in the page for each page view, and keep it in the user's session. Send
+the user to Proof:
 
-- if using `fragment`, at the callback URI, use `parseAuthorizationResponse` to extract the `vp_token` from it and send it to your verification endpoint
-- if using `direct_post`, the `vp_token` is sent directly to your verification endpoint
-
-```javascript
-import {
-  createClient,
-  parseAuthorizationResponse,
-} from "@proof.com/proof-vc-common";
+```js
+import { createClient } from "@proof.com/proof-vc-common";
 
 const proof = createClient({
   environment: "sandbox",
-  clientId: "verifier-demo",
+  clientId: "<CLIENT_ID>",
   callbackUri: "https://example.com/callback",
 });
 
-button.onclick = () => {
-  window.location.href = proof.authorizationUrl({
-    nonce: "3e8e4918-e9fb-453a-a538-81152be15c1b",
-    scope: "urn:proof:params:scope:verifiable-credentials:basic",
-  });
-};
+window.location.href = proof.authorizationUrl({
+  nonce: "3e8e4918-e9fb-453a-a538-81152be15c1b",
+  scope: "urn:proof:params:scope:verifiable-credentials:basic",
+});
+```
 
-// at https://example.com/callback
-const response = parseAuthorizationResponse(); // reads window.location.hash
+Proof sends the user to `https://example.com/callback#vp_token=...`. On the callback page, send the
+`vp_token` to your server:
+
+```js
+import { parseAuthorizationResponse } from "@proof.com/proof-vc-common";
+
+const response = parseAuthorizationResponse();
 if (response?.type === "success") {
-  fetch("/verify_vp_token", {
+  await fetch("/verify", {
     method: "POST",
     body: new URLSearchParams({ vp_token: response.vpToken }),
   });
@@ -85,87 +83,106 @@ if (response?.type === "success") {
 }
 ```
 
-`parseAuthorizationResponse` returns `{ type: "success", vpToken, state? }`, `{ type: "error", error, errorDescription?, errorUri?, state? }` when the authorization server answered with an [OAuth 2.0 error response](https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.2.1), or `null` when neither is present.
+Verify the presentation on your server, and compare the credential's nonce with the nonce in the
+user's session:
 
-You can also use `buildAuthorizationUrl` to provide all the Authorization Request parameters at once:
+```js
+import { createVerifier, ProofCredentialV1 } from "@proof.com/proof-vc-server";
 
-```javascript
-import { buildAuthorizationUrl } from "@proof.com/proof-vc-common";
+const verifier = createVerifier({ environment: "sandbox" });
 
-window.location.href = buildAuthorizationUrl({
-  environment: "sandbox",
-  clientId: "verifier-demo",
-  callbackUri: "https://example.com/callback",
-  nonce: "3e8e4918-e9fb-453a-a538-81152be15c1b",
-  scope: "urn:proof:params:scope:verifiable-credentials:basic",
+const presentation = await verifier.verifyVPToken({
+  encodedVPToken: vpToken,
+  aud: "<CLIENT_ID>",
+});
+const credential = presentation.proof_id_default?.[0];
+
+const nonce = credential?.getNonce();
+if (nonce !== undefined && nonce !== session.nonce) {
+  throw new Error("nonce mismatch");
+}
+if (credential instanceof ProofCredentialV1) {
+  console.log(credential.toJSON());
+  // => { givenName: "Alexander J", familyName: "Sample", isOver18: true, ... }
+}
+```
+
+## Usage
+
+### Request specific claims
+
+`scope` sets the claims that the user presents. Each scope returns its credentials under one key of
+the `verifyVPToken` result.
+
+| `scope`                                                        | Claims                                              | Result key                |
+| -------------------------------------------------------------- | --------------------------------------------------- | ------------------------- |
+| `urn:proof:params:scope:verifiable-credentials:basic`          | `given_name`, `family_name`, `age_equal_or_over.18` | `proof_id_default`        |
+| `urn:proof:params:scope:verifiable-credentials:nationality:us` | `age_equal_or_over.18`, `is_national.us`            | `proof_id_nationality_us` |
+
+To write the query yourself, pass a [DCQL](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#name-digital-credentials-query-l)
+query as `dcqlQuery` instead of `scope`:
+
+```js
+import { DCQL_QUERY_BASIC } from "@proof.com/proof-vc-common";
+
+const url = proof.authorizationUrl({
+  nonce: session.nonce,
+  dcqlQuery: DCQL_QUERY_BASIC,
 });
 ```
 
-### Response Modes
+`proof` is the client from the [Quickstart](#quickstart).
 
-Proof supports `fragment` and `direct_post` response modes (default `fragment`).
+### Do more on your server
 
-#### fragment
+[proof-vc-server](https://github.com/proof/proof-vc-common/tree/main/packages/server) adds pushed authorization requests, signed requests, the Digital
+Credentials API, transaction data, and verification.
 
-Using `fragment` the `vp_token` is returned as a fragment of the `callbackUri` when the user is 302 redirected from Proof to your website. Use `parseAuthorizationResponse()` in the browser to read it.
+## Reference
 
-```
-GET https://example.com/verify_vp_token#vp_token=eyJwcm9vZl9pZF9...
-```
+`createClient` options:
 
-#### direct_post
+| Option         | Default    | Description                                                            |
+| -------------- | ---------- | ---------------------------------------------------------------------- |
+| `environment`  |            | `"sandbox"` or `"production"`                                          |
+| `clientId`     |            | Your Proof client ID                                                   |
+| `callbackUri`  |            | Where Proof sends the presentation; one of your client's redirect URIs |
+| `responseMode` | `fragment` | `fragment` sends the user to `callbackUri`; `direct_post` posts to it  |
 
-Using `direct_post` the `vp_token` and `state` (optional) are returned in the `application/x-www-form-urlencoded` body of a POST request to the `callbackUri` from Proof to your server. Pass the `vp_token` value as received to [`verifyVPToken`](https://github.com/proof/proof-vc-common#verify). See the [OID4VP specification](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#name-response-mode-direct_post) for more details.
+`authorizationUrl` parameters:
 
-```
-POST https://example.com/verify_vp_token
-Content-Type: application/x-www-form-urlencoded
+| Parameter   | Required               | Description                                                                    |
+| ----------- | ---------------------- | ------------------------------------------------------------------------------ |
+| `nonce`     | yes                    | A new random value for each request; compare it when you verify                |
+| `scope`     | `scope` or `dcqlQuery` | The claims to request; see [Request specific claims](#request-specific-claims) |
+| `dcqlQuery` | `scope` or `dcqlQuery` | A DCQL query, instead of `scope`                                               |
+| `state`     | no                     | A value that Proof sends back with the presentation                            |
+| `loginHint` | no                     | The user's email, pre-filled on Proof                                          |
 
-vp_token=eyJwcm9vZl9pZF9...&state=6A2B4CD830
-```
+| Function                     | Description                                                 |
+| ---------------------------- | ----------------------------------------------------------- |
+| `createClient`               | Creates a client that builds authorization request URLs     |
+| `buildAuthorizationUrl`      | `createClient(config).authorizationUrl(params)` in one call |
+| `parseAuthorizationResponse` | Reads the presentation or the error from the callback URL   |
+| `agentsTrustListUrl`         | The redirect URI for x401 verifiers                         |
 
-## Verifiable Credential Presentation
+## Errors
 
-### Credential Type
+`createClient` and `authorizationUrl` throw `ProofVCError` with `code: "invalid_config"` when an
+option or a parameter is missing or not valid.
 
-Proof issues Verifiable Credentials according to the [SD-JWT-VC specification](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-16.html) and publishes its [OID4VCI Credential Issuer Metadata](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#name-credential-issuer-metadata) at https://api.proof.com/.well-known/openid-credential-issuer.
+## Links
 
-`ProofCredentialV1`
-
-| claim                | accessor       | type    | description                                                        |
-| -------------------- | -------------- | ------- | ------------------------------------------------------------------ |
-| given_name           | `givenName`    | string  | user's given name as it appears on the verified identity document  |
-| family_name          | `familyName`   | string  | user's family name as it appears on the verified identity document |
-| birth_date           | `birthDate`    | string  | user's date of birth in ISO 8601 format (`YYYY-MM-DD`)             |
-| age_equal_or_over.18 | `isOver18`     | boolean | boolean confirming the user is 18 or older                         |
-| age_equal_or_over.21 | `isOver21`     | boolean | boolean confirming the user is 21 or older                         |
-| age_equal_or_over.65 | `isOver65`     | boolean | boolean confirming the user is 65 or older                         |
-| is_national.us       | `isNationalUS` | boolean | boolean confirming US nationality (`nationality:us` scope)         |
-
-All attributes are selectively disclosable and will return `undefined` if the claim wasn't disclosed. `getClaims()` returns the disclosed claims as issued and `toJSON()` the accessors above. A credential with a `vct` unknown to this SDK is returned as a `DefaultProofCredential` with a one-time `ProofVCWarning`.
-
-### Request
-
-Request a Verifiable Credential Presentation with an [OAuth 2.0](https://datatracker.ietf.org/doc/html/rfc6749) Authorization Request. See [Client Side](#client-side) and [Server Side](https://github.com/proof/proof-vc-common#server-side) above for the two entry points. Exactly one of `scope` or `dcqlQuery` must be given.
-
-#### Scopes
-
-Proof supports the `scope` parameter of the [OID4VP specification](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#name-using-scope-parameter-to-re). Each scope maps to a pre-defined DCQL query and returns a specific [Credential Type](#credential-type).
-
-Supported `scope` and their associated [Credential Type](#credential-type):
-
-| scope                                                          | Credential Type     | claims                                              | Key Binding JWT |
-| -------------------------------------------------------------- | ------------------- | --------------------------------------------------- | --------------- |
-| `urn:proof:params:scope:verifiable-credentials:basic`          | `ProofCredentialV1` | `given_name`, `family_name`, `age_equal_or_over.18` | yes             |
-| `urn:proof:params:scope:verifiable-credentials:nationality:us` | `ProofCredentialV1` | `age_equal_or_over.18`, `is_national.us`            | yes             |
-
-A scope unknown to this SDK is accepted and emits a one-time `ProofVCWarning`.
-
-## Documentation
-
-_Digital Credentials_ guides https://dev.proof.com/docs/digital-credentials-overview \
-_API Documentation_ https://dev.proof.com/reference/authorizeverifiablecredentialpresentation
+- [Read the Proof Digital ID guides](https://dev.proof.com/docs/digital-credentials-overview)
+- [Read the API documentation](https://dev.proof.com/reference/authorizeverifiablecredentialpresentation)
+- [Add a "Continue with Proof" button with proof-vc-web](https://github.com/proof/proof-vc-web)
+- [Protect an endpoint with x401-workers](https://github.com/proof/x401-workers)
+- [Try Proof Digital IDs](https://try.proof.com)
 
 ## Contributing
 
 [Contribution guidelines for this project](https://github.com/proof/proof-vc-common/blob/main/CONTRIBUTING.md)
+
+## License
+
+[Apache-2.0](https://github.com/proof/proof-vc-common/blob/main/LICENSE)
