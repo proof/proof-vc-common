@@ -6,9 +6,9 @@ builds [OID4VP](https://openid.net/specs/openid-4-verifiable-presentations-1_0.h
 URLs for Proof Digital IDs, and reads the presentation (`vp_token`) from the redirect. It runs in
 the browser and in Node, and has no dependencies.
 
-To request and verify Digital IDs, with Signed Mandates and x401, use
+To request and verify Proof Digital IDs on your server, and to use Signed Mandates and x401, use
 [proof-vc-server](https://github.com/proof/proof-vc-common/tree/main/packages/server). It includes
-proof-vc-common. To add a button to your website, use
+proof-vc-common. To request Proof Digital IDs on your website in a one-click button, use
 [proof-vc-web](https://github.com/proof/proof-vc-web).
 
 - [Installation](#installation)
@@ -55,7 +55,7 @@ npm install @proof.com/proof-vc-common
 
 ## Links
 
-- [Request and verify Digital IDs with proof-vc-server](https://github.com/proof/proof-vc-common/tree/main/packages/server)
+- [Request and verify Proof Digital IDs with proof-vc-server](https://github.com/proof/proof-vc-common/tree/main/packages/server)
 - [Add a "Continue with Proof" button with proof-vc-web](https://github.com/proof/proof-vc-web)
 - [Read the Proof Digital ID guides](https://dev.proof.com/docs/digital-credentials-overview)
 

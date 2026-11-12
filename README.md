@@ -1,16 +1,16 @@
 # proof-vc-common
 
-proof-vc-common lets your server request and verify Proof Digital IDs, with Signed Mandates and
-x401.
+proof-vc-common lets your server request and verify Proof Digital IDs. It also supports Signed
+Mandates and x401.
 
 Your server sends the user to Proof with an
 [OpenID for Verifiable Presentations](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html)
-(OID4VP) authorization request. The user presents their Digital ID and signs your Signed Mandate,
+(OID4VP) authorization request. The user presents their Proof Digital ID and signs your Signed Mandate,
 such as a payment. Proof sends the presentation (`vp_token`) to your server, which verifies it and
 reads the claims and the signed mandate. With [x401](https://x401.proof.com/spec/latest/), AI agents
-present the user's Digital ID to your HTTP endpoints.
+present the user's Proof Digital ID to your HTTP endpoints.
 
-To add a button to your website without a backend SDK, use
+To request Proof Digital IDs on your website in a one-click button, use
 [proof-vc-web](https://github.com/proof/proof-vc-web).
 
 - [Installation](#installation)
@@ -42,18 +42,19 @@ To add a button to your website without a backend SDK, use
 npm install @proof.com/proof-vc-server
 ```
 
-proof-vc-server needs Node 22.12 or later. It includes `@proof.com/proof-vc-common`, the code that
-it shares with proof-vc-web.
+Requires Node 22.12 or later.
 
-You need a Proof client ID and client secret.
+You need a Proof client ID. A pushed authorization request also needs its client secret.
 [Set up an OAuth application](https://dev.proof.com/docs/oauth-client-credentials) in your Proof
 account, and add your callback URL to its redirect URIs.
 
 ## Quickstart
 
-This example asks the user to sign a payment with their Digital ID. Create a client and a verifier:
+This example is an [Express](https://expressjs.com) app (`npm install express`). It asks the user to
+sign a payment with their Proof Digital ID. Create a client, a verifier and the app:
 
 ```js
+import express from "express";
 import {
   createClient,
   createVerifier,
@@ -64,19 +65,20 @@ import {
 const proof = createClient({
   environment: "sandbox",
   clientId: "<CLIENT_ID>",
-  clientSecret: process.env.PROOF_CLIENT_SECRET,
   callbackUri: "https://example.com/verify",
   responseMode: "direct_post",
-  usePushedAuthorizationRequest: true,
 });
 const verifier = createVerifier({ environment: "sandbox" });
 const nonces = new Map(); // Use your database in production.
+
+const app = express();
+app.use(express.urlencoded({ extended: false }));
 ```
 
-When the user starts the payment, send them to Proof with their email, a new `nonce` and a new `state`:
+When the user starts the payment, send them to Proof with a new `nonce` and a new `state`:
 
 ```js
-export async function checkout(email) {
+app.get("/checkout", async (req, res) => {
   const state = crypto.randomUUID();
   const nonce = crypto.randomUUID();
   nonces.set(state, nonce);
@@ -84,7 +86,6 @@ export async function checkout(email) {
   const url = await proof.authorizationUrl({
     nonce,
     state,
-    loginHint: email,
     scope: "urn:proof:params:scope:verifiable-credentials:basic",
     transactionData: transactionData.paymentItemized({
       title: "Drive Shaft",
@@ -96,8 +97,8 @@ export async function checkout(email) {
       ],
     }),
   });
-  return Response.redirect(url, 302);
-}
+  res.redirect(url);
+});
 ```
 
 Proof sends the presentation to your callback in a POST request. The callback must be a public
@@ -105,19 +106,18 @@ HTTPS URL. Verify the presentation, compare its nonce, and read the signed payme
 the user to the `redirect_uri` that you return.
 
 ```js
-export async function verify(request) {
-  const form = await request.formData();
-  const state = String(form.get("state"));
+app.post("/verify", async (req, res) => {
+  const { state, vp_token } = req.body;
   const nonce = nonces.get(state);
   nonces.delete(state);
 
   const presentation = await verifier.verifyVPToken({
-    encodedVPToken: String(form.get("vp_token")),
+    encodedVPToken: vp_token,
     aud: "<CLIENT_ID>",
   });
   const credential = presentation.proof_id_default?.[0];
   if (!nonce || credential?.getNonce() !== nonce) {
-    return Response.json({ error: "nonce mismatch" }, { status: 400 });
+    return res.status(400).json({ error: "nonce mismatch" });
   }
 
   console.log(credential.toJSON());
@@ -125,24 +125,25 @@ export async function verify(request) {
   console.log(credential.getTransactionData(TX_DATA_TYPE.PAYMENT_ITEMIZED));
   // => { title: "Drive Shaft", currency: "USD", items: [...], ... }
 
-  return Response.json({ redirect_uri: "https://example.com/thank-you" });
-}
-```
+  // Process the payment.
 
-`checkout` and `verify` use the web standard `Request` and `Response`. Mount them in your framework
-at `GET /checkout` and `POST /verify`. `email` is the email address of the signed-in user.
+  res.json({ redirect_uri: "https://example.com/thank-you" });
+});
+
+app.listen(3000);
+```
 
 ## Usage
 
 ### Signed Mandates
 
 A Signed Mandate binds the presentation to an action, such as a payment or a wire transfer. Proof
-shows the mandate to the user, and the user signs it with their Digital ID. Proof uses
+shows the mandate to the user, and the user signs it with their Proof Digital ID. Proof uses
 [OID4VP transaction data](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#name-transaction-data).
 
 #### Request a signed mandate
 
-Pass the mandate as `transactionData`. Use a
+Pass the mandate as `transactionData`. Prefer a
 [pushed authorization request](#use-a-pushed-authorization-request), so that the mandate does not
 make the URL too long.
 
@@ -150,7 +151,6 @@ make the URL too long.
 const url = await proof.authorizationUrl({
   nonce,
   state,
-  loginHint: email,
   scope: "urn:proof:params:scope:verifiable-credentials:basic",
   transactionData: transactionData.wireInstructions({
     recipient: {
@@ -172,7 +172,7 @@ const url = await proof.authorizationUrl({
 });
 ```
 
-`proof`, `email`, `nonce` and `state` are the ones from the [Quickstart](#quickstart).
+`proof`, `nonce` and `state` are the ones from the [Quickstart](#quickstart).
 
 Mandate types:
 
@@ -186,8 +186,7 @@ Mandate types:
 
 #### Read the signed mandate
 
-After you verify the presentation, `getTransactionData` returns the mandate that the user signed,
-or `undefined` when the presentation has no mandate of that type:
+After you verify the presentation, `getTransactionData` returns the mandate that the user signed:
 
 ```js
 const wire = credential.getTransactionData(TX_DATA_TYPE.WIRE_INSTRUCTIONS);
@@ -201,8 +200,9 @@ const wire = credential.getTransactionData(TX_DATA_TYPE.WIRE_INSTRUCTIONS);
 
 With [Pushed Authorization Requests](https://datatracker.ietf.org/doc/html/rfc9126) (PAR), your
 server sends the request parameters to Proof, and the URL holds only a reference to them. The
-parameters stay out of the browser, and the URL stays short. PAR needs your client secret, and
-each request needs a `loginHint`.
+parameters stay out of the browser, and the URL stays short. To use PAR, set
+`usePushedAuthorizationRequest: true` and your client secret. Then `authorizationUrl` sends the
+parameters to Proof and returns the short URL. Each request needs a `loginHint`.
 
 ```js
 import { createClient } from "@proof.com/proof-vc-server";
@@ -215,16 +215,24 @@ const proof = createClient({
   responseMode: "direct_post",
   usePushedAuthorizationRequest: true,
 });
+
+const url = await proof.authorizationUrl({
+  nonce,
+  state,
+  loginHint: email,
+  scope: "urn:proof:params:scope:verifiable-credentials:basic",
+});
 ```
 
-The request times out after `timeout` milliseconds (10 000 by default). To cancel it earlier, pass
-a signal: `proof.authorizationUrl(params, { signal })`.
+`nonce` and `state` are the ones from the [Quickstart](#quickstart). `email` is the email address of
+the user.
 
 #### Sign the request
 
 With [JWT-Secured Authorization Requests](https://datatracker.ietf.org/doc/html/rfc9101) (JAR),
-proof-vc-server signs the request parameters with your ES256 (P-256) private key. You can use JAR
-with PAR.
+proof-vc-server signs the request parameters with your ES256 (P-256) private key. To use JAR, set
+`useSecuredAuthorizationRequest: true` and a `privateKeyFactory`. Then `authorizationUrl` returns a
+URL with the signed request. You can use JAR with PAR.
 
 ```js
 import { createClient } from "@proof.com/proof-vc-server";
@@ -237,11 +245,18 @@ const proof = createClient({
   useSecuredAuthorizationRequest: true,
   privateKeyFactory: () => privateKey,
 });
+
+const url = await proof.authorizationUrl({
+  nonce,
+  state,
+  scope: "urn:proof:params:scope:verifiable-credentials:basic",
+});
 ```
 
 `privateKeyFactory` returns a JWK, a `CryptoKey` or a `KeyObject`.
 
-Without PAR, the signed request can make the URL too long. Serve it from your server instead, with
+Without PAR, the signed request can make the URL too long. To send it by reference, get it with
+`signedAuthorizationRequest`, serve it from your server with
 `Content-Type: application/oauth-authz-req+jwt`, and send only its URL:
 
 ```js
@@ -259,7 +274,7 @@ const url = proof.jarByReferenceAuthorizationUrl({
 ### x401
 
 With [x401](https://x401.proof.com/spec/latest/), your HTTP endpoint answers `401` with a proof
-request, and the user's AI agent presents their Digital ID. To protect an endpoint on Cloudflare
+request, and the user's AI agent presents their Proof Digital ID. To protect an endpoint on Cloudflare
 Workers, use [x401-workers](https://github.com/proof/x401-workers). It uses proof-vc-server.
 
 #### Enroll an x401 verifier
@@ -373,12 +388,11 @@ import { DCQL_QUERY_BASIC } from "@proof.com/proof-vc-server";
 
 const url = await proof.authorizationUrl({
   nonce,
-  loginHint: email,
   dcqlQuery: DCQL_QUERY_BASIC,
 });
 ```
 
-`proof`, `email` and `nonce` are the ones from the [Quickstart](#quickstart).
+`proof` and `nonce` are the ones from the [Quickstart](#quickstart).
 
 ## Reference
 
@@ -467,7 +481,7 @@ The SDK throws `ProofVCError`. Its `code` tells you what failed:
 
 ## Certificate authority
 
-Proof issues Digital IDs from its
+Proof issues Proof Digital IDs from its
 [certificate authority](https://www.proof.com/legal/certificate-policy). `production` verifies them
 against the [Proof Root CA R1](http://cert.proof.com/proof-root-ca-r1.crt)
 ([in this repository](packages/server/src/certificates/trust_store/proof_root_ca_r1.ts)). `sandbox`
