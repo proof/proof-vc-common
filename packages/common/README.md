@@ -30,8 +30,7 @@ npm install @proof.com/proof-vc-common
 | `createClient(config)`       | Creates a client; its `authorizationUrl(params)` returns the URL that sends the user to Proof  |
 | `buildAuthorizationUrl`      | `createClient(config).authorizationUrl(params)` in one call                                    |
 | `parseAuthorizationResponse` | Reads `vp_token` and `state`, or the error, from the callback URL (the current URL by default) |
-| `DCQL_QUERY_BASIC`           | A DCQL query for the Proof Digital ID, under the result key `proof_id_default`                 |
-| `agentsTrustListUrl`         | The redirect URI for x401 verifiers                                                            |
+| `agentsTrustListUrl`         | The redirect URI for x401 _Verifiers_                                                          |
 | `ProofVCError`               | The error that the SDK throws; read its `code`                                                 |
 
 `createClient` options:
@@ -45,13 +44,12 @@ npm install @proof.com/proof-vc-common
 
 `authorizationUrl` parameters:
 
-| Parameter   | Required               | Description                                                     |
-| ----------- | ---------------------- | --------------------------------------------------------------- |
-| `nonce`     | yes                    | A new random value for each request; compare it when you verify |
-| `scope`     | `scope` or `dcqlQuery` | The claims to request                                           |
-| `dcqlQuery` | `scope` or `dcqlQuery` | A DCQL query, instead of `scope`                                |
-| `state`     | no                     | A value that Proof sends back with the presentation             |
-| `loginHint` | no                     | The user's email, pre-filled on Proof                           |
+| Parameter   | Required | Description                                                     |
+| ----------- | -------- | --------------------------------------------------------------- |
+| `nonce`     | yes      | A new random value for each request; compare it when you verify |
+| `scope`     | yes      | The claims to request                                           |
+| `state`     | no       | A value that Proof sends back with the presentation             |
+| `loginHint` | no       | The user's email, pre-filled on Proof                           |
 
 ## Links
 

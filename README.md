@@ -1,14 +1,13 @@
 # proof-vc-common
 
-proof-vc-common lets your server request and verify Proof Digital IDs. It also supports Signed
-Mandates and x401.
+proof-vc-common lets your server request and verify Proof Digital IDs.
 
 Your server sends the user to Proof with an
 [OpenID for Verifiable Presentations](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html)
-(OID4VP) authorization request. The user presents their Proof Digital ID and signs your Signed Mandate,
-such as a payment. Proof sends the presentation (`vp_token`) to your server, which verifies it and
-reads the claims and the signed mandate. With [x401](https://x401.proof.com/spec/latest/), AI agents
-present the user's Proof Digital ID to your HTTP endpoints.
+(OID4VP) authorization request. The user presents their Proof Digital ID. Proof sends the
+presentation (`vp_token`) to your server, which verifies it and reads the claims. To have the user
+sign an action, such as a payment, add a [Signed Mandate](#signed-mandates) to the request. With
+[x401](#x401), AI agents present the user's Proof Digital ID to your HTTP endpoints.
 
 To request Proof Digital IDs on your website in a one-click button, use
 [proof-vc-web](https://github.com/proof/proof-vc-web).
@@ -23,9 +22,8 @@ To request Proof Digital IDs on your website in a one-click button, use
     - [Use a pushed authorization request](#use-a-pushed-authorization-request)
     - [Sign the request](#sign-the-request)
   - [x401](#x401)
-    - [Enroll an x401 verifier](#enroll-an-x401-verifier)
-    - [Verify x401 presentations](#verify-x401-presentations)
-    - [Use the Digital Credentials API](#use-the-digital-credentials-api)
+    - [Enroll an x401 _Verifier_](#enroll-an-x401-verifier)
+    - [Protect an endpoint](#protect-an-endpoint)
     - [Pay for signatures with x402 (optional)](#pay-for-signatures-with-x402-optional)
   - [Request specific claims](#request-specific-claims)
 - [Reference](#reference)
@@ -44,14 +42,14 @@ npm install @proof.com/proof-vc-server
 
 Requires Node 22.12 or later.
 
-You need a Proof client ID. A pushed authorization request also needs its client secret.
+You need the client ID and the client secret of a Proof OAuth application.
 [Set up an OAuth application](https://dev.proof.com/docs/oauth-client-credentials) in your Proof
 account, and add your callback URL to its redirect URIs.
 
 ## Quickstart
 
 This example is an [Express](https://expressjs.com) app (`npm install express`). It asks the user to
-sign a payment with their Proof Digital ID. Create a client, a verifier and the app:
+sign a payment with their Proof Digital ID. Create a client, a _Verifier_ and the app:
 
 ```js
 import express from "express";
@@ -275,11 +273,11 @@ const url = proof.jarByReferenceAuthorizationUrl({
 
 With [x401](https://x401.proof.com/spec/latest/), your HTTP endpoint answers `401` with a proof
 request, and the user's AI agent presents their Proof Digital ID. To protect an endpoint on Cloudflare
-Workers, use [x401-workers](https://github.com/proof/x401-workers). It uses proof-vc-server.
+Workers, use [x401-workers](https://github.com/proof/x401-workers).
 
-#### Enroll an x401 verifier
+#### Enroll an x401 _Verifier_
 
-An x401 verifier's client ID is the URL of its
+An x401 _Verifier_'s client ID is the URL of its
 [Client ID Metadata Document](https://www.ietf.org/archive/id/draft-ietf-oauth-client-id-metadata-document-02.html).
 Build the document and serve it at that URL:
 
@@ -298,7 +296,7 @@ const document = await createClientIdMetadataDocument({
 });
 ```
 
-Then create your verifier account. Proof sends an activation link to the email address. In
+Then create your _Verifier_ account. Proof sends an activation link to the email address. In
 `production`, the email address must be on the document's domain.
 
 ```sh
@@ -306,44 +304,83 @@ npx @proof.com/proof-vc-server enroll https://example.com/.well-known/proof-clie
   --email you@example.com --key private-key.pem --environment sandbox
 ```
 
-#### Verify x401 presentations
+#### Protect an endpoint
 
-x401 presentations have detached signatures. The verifier gets them from Proof with your client ID
-and the private key published in your Client ID Metadata Document:
-
-```js
-import { createVerifier } from "@proof.com/proof-vc-server";
-
-const verifier = createVerifier({
-  environment: "sandbox",
-  clientId: "https://example.com/.well-known/proof-client.json",
-  privateKeyFactory: () => privateKey,
-});
-```
-
-#### Use the Digital Credentials API
-
-`signedDcApiRequest` returns a signed request for the
-[W3C Digital Credentials API](https://www.w3.org/TR/digital-credentials/). Pass it to
-`navigator.credentials.get` in the browser. `expectedOrigins` lists the origins that can make the request: your
-website, and any party between it and the user, such as an AI agent's browser.
+This example uses [x401-node](https://github.com/proof/x401-node) (`npm install @proof.com/x401-node`)
+to read and write the x401 headers. When the request has no `PROOF-RESPONSE` header, the endpoint
+answers `401` with a signed request for a Proof Digital ID. When the AI agent retries with the
+presentation, the endpoint verifies it.
 
 ```js
-import { createClient, DCQL_QUERY_BASIC } from "@proof.com/proof-vc-server";
+import {
+  agentsTrustListUrl,
+  createClient,
+  createVerifier,
+} from "@proof.com/proof-vc-server";
+import {
+  DC_API_PROTOCOL,
+  HEADER,
+  verifier as x401,
+} from "@proof.com/x401-node";
 
+const clientId = "https://example.com/.well-known/proof-client.json";
 const proof = createClient({
   environment: "sandbox",
-  clientId: "https://example.com/.well-known/proof-client.json",
+  clientId,
   useSecuredAuthorizationRequest: true,
   privateKeyFactory: () => privateKey,
 });
+const verifier = createVerifier({
+  environment: "sandbox",
+  clientId,
+  privateKeyFactory: () => privateKey,
+});
+const nonces = new Set(); // Use your database in production.
 
-const request = await proof.signedDcApiRequest({
-  nonce,
-  dcqlQuery: DCQL_QUERY_BASIC,
-  expectedOrigins: ["https://example.com"],
+app.get("/protected", async (req, res) => {
+  const proofResponse = req.get(HEADER.PROOF_RESPONSE);
+  if (!proofResponse) {
+    const nonce = crypto.randomUUID();
+    nonces.add(nonce);
+    const request = await proof.signedDcApiRequest({
+      nonce,
+      scope: "urn:proof:params:scope:verifiable-credentials:basic",
+      expectedOrigins: [agentsTrustListUrl("sandbox")],
+    });
+    const payload = x401.buildPayload({
+      credentialRequirements: {
+        digital: {
+          requests: [{ protocol: DC_API_PROTOCOL.SIGNED, data: { request } }],
+        },
+      },
+    });
+    return res
+      .status(401)
+      .set(HEADER.PROOF_REQUEST, x401.encodePayload(payload))
+      .end();
+  }
+
+  const artifact = x401.decodeResultArtifact(proofResponse);
+  const credentialResult =
+    artifact.credential_result ??
+    (await (await fetch(artifact.credential_result_uri)).json());
+  const presentation = await verifier.verifyVPToken({
+    encodedVPToken: credentialResult.data.vp_token,
+    aud: clientId,
+  });
+  const credential = presentation.proof_id_default?.[0];
+  if (!nonces.delete(credential?.getNonce())) {
+    return res.status(401).end();
+  }
+
+  res.json(credential.toJSON());
 });
 ```
+
+`app` is the one from the [Quickstart](#quickstart). `privateKey` is the private key of your
+_Verifier_. Proof sends the presentation by reference, so the endpoint fetches
+`credential_result_uri` when it is set. x401 presentations have detached signatures:
+`verifyVPToken` gets them from Proof with your client ID and private key.
 
 #### Pay for signatures with x402 (optional)
 
@@ -360,7 +397,7 @@ import { privateKeyToAccount } from "viem/accounts";
 const wallet = privateKeyToAccount(evmPrivateKey);
 
 const verifier = createVerifier({
-  environment: "production",
+  environment: "sandbox",
   clientId: "https://example.com/.well-known/proof-client.json",
   privateKeyFactory: () => privateKey,
   fetch: wrapFetchWithPaymentFromConfig(fetch, {
@@ -378,21 +415,6 @@ the `verifyVPToken` result.
 | -------------------------------------------------------------- | --------------------------------------------------- | ------------------------- |
 | `urn:proof:params:scope:verifiable-credentials:basic`          | `given_name`, `family_name`, `age_equal_or_over.18` | `proof_id_default`        |
 | `urn:proof:params:scope:verifiable-credentials:nationality:us` | `age_equal_or_over.18`, `is_national.us`            | `proof_id_nationality_us` |
-
-To write the query yourself, pass a
-[DCQL](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#name-digital-credentials-query-l)
-query as `dcqlQuery` instead of `scope`:
-
-```js
-import { DCQL_QUERY_BASIC } from "@proof.com/proof-vc-server";
-
-const url = await proof.authorizationUrl({
-  nonce,
-  dcqlQuery: DCQL_QUERY_BASIC,
-});
-```
-
-`proof` and `nonce` are the ones from the [Quickstart](#quickstart).
 
 ## Reference
 
@@ -414,32 +436,31 @@ const url = await proof.authorizationUrl({
 
 `authorizationUrl` parameters:
 
-| Parameter         | Required               | Description                                                                    |
-| ----------------- | ---------------------- | ------------------------------------------------------------------------------ |
-| `nonce`           | yes                    | A new random value for each request; compare it when you verify                |
-| `scope`           | `scope` or `dcqlQuery` | The claims to request; see [Request specific claims](#request-specific-claims) |
-| `dcqlQuery`       | `scope` or `dcqlQuery` | A DCQL query, instead of `scope`                                               |
-| `transactionData` | no                     | A Signed Mandate; see [Signed Mandates](#signed-mandates)                      |
-| `state`           | no                     | A value that Proof sends back with the presentation                            |
-| `loginHint`       | with PAR               | The user's email, pre-filled on Proof                                          |
+| Parameter         | Required | Description                                                                    |
+| ----------------- | -------- | ------------------------------------------------------------------------------ |
+| `nonce`           | yes      | A new random value for each request; compare it when you verify                |
+| `scope`           | yes      | The claims to request; see [Request specific claims](#request-specific-claims) |
+| `transactionData` | no       | A Signed Mandate; see [Signed Mandates](#signed-mandates)                      |
+| `state`           | no       | A value that Proof sends back with the presentation                            |
+| `loginHint`       | with PAR | The user's email, pre-filled on Proof                                          |
 
 `createVerifier` options:
 
-| Option              | Description                                                                           |
-| ------------------- | ------------------------------------------------------------------------------------- |
-| `environment`       | `"sandbox"` or `"production"`; use the same one as the request                        |
-| `clientId`          | Your client ID; required for [x401 presentations](#verify-x401-presentations)         |
-| `privateKeyFactory` | Your ES256 private key; required for [x401 presentations](#verify-x401-presentations) |
-| `timeout`, `fetch`  | As in `createClient`                                                                  |
+| Option              | Description                                                                     |
+| ------------------- | ------------------------------------------------------------------------------- |
+| `environment`       | `"sandbox"` or `"production"`; use the same one as the request                  |
+| `clientId`          | Your client ID; required for [x401 presentations](#protect-an-endpoint)         |
+| `privateKeyFactory` | Your ES256 private key; required for [x401 presentations](#protect-an-endpoint) |
+| `timeout`, `fetch`  | As in `createClient`                                                            |
 
-| Function                         | Description                                                                   |
-| -------------------------------- | ----------------------------------------------------------------------------- |
-| `createClient`                   | Creates a client that builds authorization requests                           |
-| `createVerifier`                 | Creates a verifier with `verifyVPToken`, and `verify` for a single SD-JWT-VC  |
-| `createClientIdMetadataDocument` | Builds a Client ID Metadata Document                                          |
-| `enroll`                         | Creates a verifier account, as the `enroll` command does                      |
-| `agentsTrustListUrl`             | The redirect URI for x401 verifiers                                           |
-| `parseAuthorizationResponse`     | Reads the presentation from the callback URL, with `responseMode: "fragment"` |
+| Function                         | Description                                                                    |
+| -------------------------------- | ------------------------------------------------------------------------------ |
+| `createClient`                   | Creates a client that builds authorization requests                            |
+| `createVerifier`                 | Creates a _Verifier_ with `verifyVPToken`, and `verify` for a single SD-JWT-VC |
+| `createClientIdMetadataDocument` | Builds a Client ID Metadata Document                                           |
+| `enroll`                         | Creates a _Verifier_ account, as the `enroll` command does                     |
+| `agentsTrustListUrl`             | The redirect URI for x401 _Verifiers_                                          |
+| `parseAuthorizationResponse`     | Reads the presentation from the callback URL, with `responseMode: "fragment"`  |
 
 ## Credentials
 
