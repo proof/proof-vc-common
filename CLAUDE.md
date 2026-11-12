@@ -46,9 +46,9 @@ The repo has 3 READMEs. npm shows the package ones. Update the 3 together, in th
 
 | README                      | Content                                                                                                                        |
 | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `README.md`                 | Everything: both packages, every Usage task, all reference tables                                                              |
+| `README.md`                 | The backend SDK (proof-vc-server): every Usage task, all reference tables. No browser code.                                    |
 | `packages/server/README.md` | Same as the root, with `# proof-vc-server` and its own first sentence                                                          |
-| `packages/common/README.md` | Installation, Quickstart, the browser-side Usage tasks, the `createClient` reference and a pointer to proof-vc-server for more |
+| `packages/common/README.md` | Short: what proof-vc-web and proof-vc-server share, links to both, Installation and the `createClient` reference. No tutorial. |
 
 In the package READMEs, links to files in the repo are absolute (`https://github.com/proof/proof-vc-common/blob/main/...`), because npm cannot resolve relative links.
 
