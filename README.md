@@ -1,6 +1,6 @@
-# proof-vc-common
+# proof-vc-server
 
-proof-vc-common lets your server request and verify Proof Digital IDs.
+proof-vc-server lets your server request and verify Proof Digital IDs.
 
 Your server sends the user to Proof with an
 [OpenID for Verifiable Presentations](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html)
@@ -48,17 +48,12 @@ account, and add your callback URL to its redirect URIs.
 
 ## Quickstart
 
-This example is an [Express](https://expressjs.com) app (`npm install express`). It asks the user to
-sign a payment with their Proof Digital ID. Create a client, a _Verifier_ and the app:
+This example is an [Express](https://expressjs.com) app (`npm install express`). It asks the user
+for their name and age with their Proof Digital ID. Create a client, a _Verifier_ and the app:
 
 ```js
 import express from "express";
-import {
-  createClient,
-  createVerifier,
-  transactionData,
-  TX_DATA_TYPE,
-} from "@proof.com/proof-vc-server";
+import { createClient, createVerifier } from "@proof.com/proof-vc-server";
 
 const proof = createClient({
   environment: "sandbox",
@@ -73,7 +68,7 @@ const app = express();
 app.use(express.urlencoded({ extended: false }));
 ```
 
-When the user starts the payment, send them to Proof with a new `nonce` and a new `state`:
+When the user starts the checkout, send them to Proof with a new `nonce` and a new `state`:
 
 ```js
 app.get("/checkout", async (req, res) => {
@@ -85,23 +80,14 @@ app.get("/checkout", async (req, res) => {
     nonce,
     state,
     scope: "urn:proof:params:scope:verifiable-credentials:basic",
-    transactionData: transactionData.paymentItemized({
-      title: "Drive Shaft",
-      description: "The Roadhouse (18+), May 6 2026",
-      currency: "USD",
-      items: [
-        { quantity: 2, unit_cost: 40.0, label: "General Admission" },
-        { quantity: 2, unit_cost: 11.4, label: "Fees" },
-      ],
-    }),
   });
   res.redirect(url);
 });
 ```
 
 Proof sends the presentation to your callback in a POST request. The callback must be a public
-HTTPS URL. Verify the presentation, compare its nonce, and read the signed payment. Proof then sends
-the user to the `redirect_uri` that you return.
+HTTPS URL. Verify the presentation and compare its nonce. Proof then sends the user to the
+`redirect_uri` that you return.
 
 ```js
 app.post("/verify", async (req, res) => {
@@ -120,16 +106,17 @@ app.post("/verify", async (req, res) => {
 
   console.log(credential.toJSON());
   // => { givenName: "Alexander J", familyName: "Sample", isOver18: true, ... }
-  console.log(credential.getTransactionData(TX_DATA_TYPE.PAYMENT_ITEMIZED));
-  // => { title: "Drive Shaft", currency: "USD", items: [...], ... }
 
-  // Process the payment.
+  // Continue the checkout.
 
   res.json({ redirect_uri: "https://example.com/thank-you" });
 });
 
 app.listen(3000);
 ```
+
+To test on your computer, expose port 3000 with an HTTPS tunnel. Use the tunnel URL instead of
+`https://example.com`, and add its `/verify` URL to the redirect URIs of your OAuth application.
 
 ## Usage
 
@@ -146,6 +133,8 @@ Pass the mandate as `transactionData`. Prefer a
 make the URL too long.
 
 ```js
+import { transactionData } from "@proof.com/proof-vc-server";
+
 const url = await proof.authorizationUrl({
   nonce,
   state,
@@ -187,6 +176,8 @@ Mandate types:
 After you verify the presentation, `getTransactionData` returns the mandate that the user signed:
 
 ```js
+import { TX_DATA_TYPE } from "@proof.com/proof-vc-server";
+
 const wire = credential.getTransactionData(TX_DATA_TYPE.WIRE_INSTRUCTIONS);
 ```
 
@@ -251,7 +242,8 @@ const url = await proof.authorizationUrl({
 });
 ```
 
-`privateKeyFactory` returns a JWK, a `CryptoKey` or a `KeyObject`.
+`privateKeyFactory` returns a JWK, a `CryptoKey` or a `KeyObject`. Add the matching public key to
+your OAuth application.
 
 Without PAR, the signed request can make the URL too long. To send it by reference, get it with
 `signedAuthorizationRequest`, serve it from your server with
@@ -460,7 +452,6 @@ the `verifyVPToken` result.
 | `createClientIdMetadataDocument` | Builds a Client ID Metadata Document                                           |
 | `enroll`                         | Creates a _Verifier_ account, as the `enroll` command does                     |
 | `agentsTrustListUrl`             | The redirect URI for x401 _Verifiers_                                          |
-| `parseAuthorizationResponse`     | Reads the presentation from the callback URL, with `responseMode: "fragment"`  |
 
 ## Credentials
 
@@ -471,10 +462,7 @@ is a `ProofCredentialV1`, or a `DefaultProofCredential` when this SDK does not k
 | ---------------------- | ---------------------------- | ------- |
 | `given_name`           | `givenName`                  | string  |
 | `family_name`          | `familyName`                 | string  |
-| `birth_date`           | `birthDate`                  | string  |
 | `age_equal_or_over.18` | `isOver18`                   | boolean |
-| `age_equal_or_over.21` | `isOver21`                   | boolean |
-| `age_equal_or_over.65` | `isOver65`                   | boolean |
 | `is_national.us`       | `isNationalUS`               | boolean |
 
 A property is `undefined` when the user did not present that claim. All credentials have these
