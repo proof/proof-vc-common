@@ -1,224 +1,279 @@
-# Proof Digital Credentials
+# proof-vc-server
 
-<img src="https://raw.githubusercontent.com/proof/proof-vc-common/main/docs/proof-logo.svg" alt="drawing" width="450"/>
+proof-vc-server lets your server request and verify Proof Digital IDs.
 
-_A digital passport. Verified once, usable everywhere._
+Your server sends the user to Proof with an
+[OpenID for Verifiable Presentations](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html)
+(OID4VP) authorization request. The user presents their Proof Digital ID. Proof sends the
+presentation (`vp_token`) to your server, which verifies it and reads the claims. To have the user
+sign an action, such as a payment, add a [Signed Mandate](#signed-mandates) to the request. With
+[x401](#x401), AI agents present the user's Proof Digital ID to your HTTP endpoints.
 
-Read our [documentation](https://dev.proof.com/docs/digital-credentials-overview) or [try it](https://try.proof.com)!
+To request Proof Digital IDs on your website in a one-click button, use
+[proof-vc-web](https://github.com/proof/proof-vc-web).
 
-## Table of Contents
-
-- [Packages](#packages)
 - [Installation](#installation)
-- [Getting Started](#getting-started)
-  - [Server Side](#server-side)
-  - [Response Modes](#response-modes)
-  - [Pushed Authorization Requests](#pushed-authorization-requests)
-  - [Secured Authorization Requests](#secured-authorization-requests)
-    - [Digital Credentials API](#digital-credentials-api)
-    - [Client ID Metadata Document](#client-id-metadata-document)
-  - [Verifier Enrollment](#verifier-enrollment)
-- [Verifiable Credential Presentation](#verifiable-credential-presentation)
-  - [Credential Type](#credential-type)
-  - [Request](#request)
-    - [Scopes](#scopes)
-    - [Transaction Templates](#transaction-templates)
-  - [Verify](#verify)
-    - [Detached signatures](#detached-signatures)
-    - [Nonce](#nonce)
-- [Certificate Authority](#certificate-authority)
-- [Documentation](#documentation)
+- [Quickstart](#quickstart)
+- [Usage](#usage)
+  - [Signed Mandates](#signed-mandates)
+    - [Request a signed mandate](#request-a-signed-mandate)
+    - [Read the signed mandate](#read-the-signed-mandate)
+  - [Secure the request](#secure-the-request)
+    - [Use a pushed authorization request](#use-a-pushed-authorization-request)
+    - [Sign the request](#sign-the-request)
+  - [x401](#x401)
+    - [Enroll an x401 _Verifier_](#enroll-an-x401-verifier)
+    - [Protect an endpoint](#protect-an-endpoint)
+    - [Pay for signatures with x402 (optional)](#pay-for-signatures-with-x402-optional)
+  - [Request specific claims](#request-specific-claims)
+- [Reference](#reference)
+- [Credentials](#credentials)
+- [Errors](#errors)
+- [Certificate authority](#certificate-authority)
+- [Links](#links)
 - [Contributing](#contributing)
-
-## Packages
-
-| Package                                                                                                | Runtime             | Usage                                                                                                                               | Runtime deps      |
-| ------------------------------------------------------------------------------------------------------ | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
-| **[`@proof.com/proof-vc-common`](https://github.com/proof/proof-vc-common/blob/main/packages/common)** | browser **or** Node | Request a Verifiable Presentation                                                                                                   | **0** ✅          |
-| **[`@proof.com/proof-vc-server`](https://github.com/proof/proof-vc-common/blob/main/packages/server)** | Node                | `proof-vc-common` **plus** Presentation Verification, Secured Authorization Requests, Transaction Templates and Verifier Enrollment | sd-jwt, owf, jose |
+- [License](#license)
 
 ## Installation
 
-Browser / Node:
-
-```
-npm install @proof.com/proof-vc-common
-```
-
-Node:
-
-```
+```sh
 npm install @proof.com/proof-vc-server
 ```
 
-Proof implements the [OpenID for Verifiable Presentations 1.0](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html) specification.
-[Setup an OAuth Application](https://dev.proof.com/docs/oauth-client-credentials) in your Proof account to get your `client_id`.
+Requires Node 22.12 or later.
 
-## Getting Started
+You need the client ID and the client secret of a Proof OAuth application.
+[Set up an OAuth application](https://dev.proof.com/docs/oauth-client-credentials) in your Proof
+account, and add your callback URL to its redirect URIs.
 
-### Server Side
+## Quickstart
 
-You can request a Verifiable Presentation from our backend by using `createClient` and `authorizationUrl` to craft an Authorization Request URL.
-Either `fragment` or `direct_post` [Response Mode](#response-modes) are supported (defaults to `fragment`).
+This example is an [Express](https://expressjs.com) app (`npm install express`). It asks the user
+for their name and age with their Proof Digital ID. Create a client, a _Verifier_ and the app:
 
-With [`@proof.com/proof-vc-server`](https://github.com/proof/proof-vc-common/blob/main/packages/server) you can also use [Pushed Authorization Requests](#pushed-authorization-requests), [Secured Authorization Requests](#secured-authorization-requests) and [Transaction Templates](#transaction-templates).
-
-```javascript
-import { createClient } from "@proof.com/proof-vc-server";
+```js
+import express from "express";
+import { createClient, createVerifier } from "@proof.com/proof-vc-server";
 
 const proof = createClient({
   environment: "sandbox",
-  clientId: "verifier-demo",
-  callbackUri: "https://example.com/verify_vp_token",
+  clientId: "<CLIENT_ID>",
+  callbackUri: "https://example.com/verify",
   responseMode: "direct_post",
 });
+const verifier = createVerifier({ environment: "sandbox" });
+const nonces = new Map(); // Use your database in production.
 
-const redirect = await proof.authorizationUrl({
-  nonce: "3e8e4918-e9fb-453a-a538-81152be15c1b",
-  scope: "urn:proof:params:scope:verifiable-credentials:basic",
-  state: "6A2B4CD830",
+const app = express();
+app.use(express.urlencoded({ extended: false }));
+```
+
+When the user starts the checkout, send them to Proof with a new `nonce` and a new `state`:
+
+```js
+app.get("/checkout", async (req, res) => {
+  const state = crypto.randomUUID();
+  const nonce = crypto.randomUUID();
+  nonces.set(state, nonce);
+
+  const url = await proof.authorizationUrl({
+    nonce,
+    state,
+    scope: "urn:proof:params:scope:verifiable-credentials:basic",
+  });
+  res.redirect(url);
 });
-res.redirect(redirect);
 ```
 
-`state` and `loginHint` are optional and forwarded as the `state` and `login_hint` request parameters.
+Proof sends the presentation to your callback in a POST request. The callback must be a public
+HTTPS URL. Verify the presentation and compare its nonce. Proof then sends the user to the
+`redirect_uri` that you return.
 
-### Response Modes
+```js
+app.post("/verify", async (req, res) => {
+  const { state, vp_token } = req.body;
+  const nonce = nonces.get(state);
+  nonces.delete(state);
 
-Proof supports `fragment` and `direct_post` response modes (default `fragment`).
+  const presentation = await verifier.verifyVPToken({
+    encodedVPToken: vp_token,
+    aud: "<CLIENT_ID>",
+  });
+  const credential = presentation.proof_id_default?.[0];
+  if (!nonce || credential?.getNonce() !== nonce) {
+    return res.status(400).json({ error: "nonce mismatch" });
+  }
 
-#### fragment
+  console.log(credential.toJSON());
+  // => { givenName: "Alexander J", familyName: "Sample", isOver18: true, ... }
 
-Using `fragment` the `vp_token` is returned as a fragment of the `callbackUri` when the user is 302 redirected from Proof to your website. Use `parseAuthorizationResponse()` in the browser to read it.
+  // Continue the checkout.
 
+  res.json({ redirect_uri: "https://example.com/thank-you" });
+});
+
+app.listen(3000);
 ```
-GET https://example.com/verify_vp_token#vp_token=eyJwcm9vZl9pZF9...
+
+To test on your computer, expose port 3000 with an HTTPS tunnel. Use the tunnel URL instead of
+`https://example.com`, and add its `/verify` URL to the redirect URIs of your OAuth application.
+
+## Usage
+
+### Signed Mandates
+
+A Signed Mandate binds the presentation to an action, such as a payment or a wire transfer. Proof
+shows the mandate to the user, and the user signs it with their Proof Digital ID. Proof uses
+[OID4VP transaction data](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#name-transaction-data).
+
+#### Request a signed mandate
+
+Pass the mandate as `transactionData`. Prefer a
+[pushed authorization request](#use-a-pushed-authorization-request), so that the mandate does not
+make the URL too long.
+
+```js
+import { transactionData } from "@proof.com/proof-vc-server";
+
+const url = await proof.authorizationUrl({
+  nonce,
+  state,
+  scope: "urn:proof:params:scope:verifiable-credentials:basic",
+  transactionData: transactionData.wireInstructions({
+    recipient: {
+      institution_name: "Crestline Financial",
+      individual_name: "Acme Corp LLC",
+      routing_number: "055000123",
+      account_number: "7293",
+    },
+    source: {
+      institution_name: "Sterling & Union",
+      individual_name: "Sterling & Union",
+      routing_number: "091000456",
+      account_number: "4821",
+    },
+    amount: 5000,
+    currency: "USD",
+    memo: "Invoice #2024-089",
+  }),
+});
 ```
 
-#### direct_post
+`proof`, `nonce` and `state` are the ones from the [Quickstart](#quickstart).
 
-Using `direct_post` the `vp_token` and `state` (optional) are returned in the `application/x-www-form-urlencoded` body of a POST request to the `callbackUri` from Proof to your server. Pass the `vp_token` value as received to [`verifyVPToken`](#verify). See the [OID4VP specification](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#name-response-mode-direct_post) for more details.
+Mandate types:
 
+| Factory                               | `TX_DATA_TYPE`          | Payload type                 | Use it for                         |
+| ------------------------------------- | ----------------------- | ---------------------------- | ---------------------------------- |
+| `transactionData.paymentItemized`     | `PAYMENT_ITEMIZED`      | `PaymentItemizedPayload`     | A purchase with line items         |
+| `transactionData.wireInstructions`    | `WIRE_INSTRUCTIONS`     | `WireInstructionsPayload`    | A wire transfer                    |
+| `transactionData.paymentMandate`      | `PAYMENT_MANDATE`       | `PaymentMandatePayload`      | An AI agent that pays for the user |
+| `transactionData.mppPaymentChallenge` | `MPP_PAYMENT_CHALLENGE` | `MppPaymentChallengePayload` | An MPP payment challenge           |
+| `transactionData.sessionData`         | `SESSION_DATA`          | `SessionDataPayload`         | The user's IP address and device   |
+
+#### Read the signed mandate
+
+After you verify the presentation, `getTransactionData` returns the mandate that the user signed:
+
+```js
+import { TX_DATA_TYPE } from "@proof.com/proof-vc-server";
+
+const wire = credential.getTransactionData(TX_DATA_TYPE.WIRE_INSTRUCTIONS);
 ```
-POST https://example.com/verify_vp_token
-Content-Type: application/x-www-form-urlencoded
 
-vp_token=eyJwcm9vZl9pZF9...&state=6A2B4CD830
-```
+`credential` is the one from the [Quickstart](#quickstart).
 
-### Pushed Authorization Requests
+### Secure the request
 
-Proof supports [Pushed Authorization Requests](https://datatracker.ietf.org/doc/html/rfc9126) (PAR).
-You may want to use this feature when using [Transaction Templates](#transaction-templates) to avoid hitting URL size limits.
-PAR requires a `clientSecret` and is therefore available **only from `@proof.com/proof-vc-server`**.
+#### Use a pushed authorization request
 
-```javascript
+With [Pushed Authorization Requests](https://datatracker.ietf.org/doc/html/rfc9126) (PAR), your
+server sends the request parameters to Proof, and the URL holds only a reference to them. The
+parameters stay out of the browser, and the URL stays short. To use PAR, set
+`usePushedAuthorizationRequest: true` and your client secret. Then `authorizationUrl` sends the
+parameters to Proof and returns the short URL. Each request needs a `loginHint`.
+
+```js
 import { createClient } from "@proof.com/proof-vc-server";
 
 const proof = createClient({
   environment: "sandbox",
-  clientId: "caxdw5a7d",
+  clientId: "<CLIENT_ID>",
   clientSecret: process.env.PROOF_CLIENT_SECRET,
-  callbackUri: "https://example.com/verify_vp_token",
+  callbackUri: "https://example.com/verify",
   responseMode: "direct_post",
   usePushedAuthorizationRequest: true,
 });
 
-const redirect = await proof.authorizationUrl({
-  nonce: "3e8e4918-e9fb-453a-a538-81152be15c1b",
+const url = await proof.authorizationUrl({
+  nonce,
+  state,
+  loginHint: email,
   scope: "urn:proof:params:scope:verifiable-credentials:basic",
 });
 ```
 
-The PAR request times out after `timeout` milliseconds (client config, default 10 000). Pass an `AbortSignal` as the second argument, `proof.authorizationUrl(params, { signal })`, to cancel it earlier.
+`nonce` and `state` are the ones from the [Quickstart](#quickstart). `email` is the email address of
+the user.
 
-### Secured Authorization Requests
+#### Sign the request
 
-Proof supports [JWT-Secured Authorization Requests](https://datatracker.ietf.org/doc/html/rfc9101) (JAR): the Authorization Request parameters are sent as a single signed JWT ("request object") instead of plain query parameters.
-JAR is available **only from `@proof.com/proof-vc-server`** and requires:
+With [JWT-Secured Authorization Requests](https://datatracker.ietf.org/doc/html/rfc9101) (JAR),
+proof-vc-server signs the request parameters with your ES256 (P-256) private key. To use JAR, set
+`useSecuredAuthorizationRequest: true` and a `privateKeyFactory`. Then `authorizationUrl` returns a
+URL with the signed request. You can use JAR with PAR.
 
-- `useSecuredAuthorizationRequest: true`
-- a `privateKeyFactory` returning your ES256 (P-256) private key as a JWK, `CryptoKey` or `KeyObject`
-
-#### By value
-
-`authorizationUrl` signs the request object and embeds it in the `request` parameter. It can be combined with [Pushed Authorization Requests](#pushed-authorization-requests).
-
-```javascript
+```js
 import { createClient } from "@proof.com/proof-vc-server";
 
 const proof = createClient({
   environment: "sandbox",
-  clientId: "caxdw5a7d",
-  callbackUri: "https://example.com/verify_vp_token",
+  clientId: "<CLIENT_ID>",
+  callbackUri: "https://example.com/verify",
   responseMode: "direct_post",
   useSecuredAuthorizationRequest: true,
-  privateKeyFactory: () => myPrivateKeyJwk,
+  privateKeyFactory: () => privateKey,
 });
 
-const redirect = await proof.authorizationUrl({
-  nonce: "3e8e4918-e9fb-453a-a538-81152be15c1b",
+const url = await proof.authorizationUrl({
+  nonce,
+  state,
   scope: "urn:proof:params:scope:verifiable-credentials:basic",
 });
 ```
 
-#### By reference
+`privateKeyFactory` returns a JWK, a `CryptoKey` or a `KeyObject`. Add the matching public key to
+your OAuth application.
 
-If you'd rather host the request object yourself, use `signedAuthorizationRequest` to obtain the signed JWT, store it on your backend (serve it with `Content-Type: application/oauth-authz-req+jwt`), then hand Proof a `request_uri` pointing at it with `jarByReferenceAuthorizationUrl`.
-JAR by reference cannot be combined with Pushed Authorization Requests.
+Without PAR, the signed request can make the URL too long. To send it by reference, get it with
+`signedAuthorizationRequest`, serve it from your server with
+`Content-Type: application/oauth-authz-req+jwt`, and send only its URL:
 
-```javascript
-import { createClient } from "@proof.com/proof-vc-server";
-
-const proof = createClient({
-  environment: "sandbox",
-  clientId: "caxdw5a7d",
-  callbackUri: "https://example.com/verify_vp_token",
-  responseMode: "direct_post",
-  useSecuredAuthorizationRequest: true,
-  privateKeyFactory: () => myPrivateKeyJwk,
-});
-
-// a signed JWT string; store it and serve it at the request_uri below
-const jar = await proof.signedAuthorizationRequest({
-  nonce: "3e8e4918-e9fb-453a-a538-81152be15c1b",
+```js
+const jwt = await proof.signedAuthorizationRequest({
+  nonce,
   scope: "urn:proof:params:scope:verifiable-credentials:basic",
 });
-await store.put("jar/42", jar);
+await store.put("requests/42", jwt);
 
-const redirect = proof.jarByReferenceAuthorizationUrl({
-  requestUri: "https://example.com/jar/42",
+const url = proof.jarByReferenceAuthorizationUrl({
+  requestUri: "https://example.com/requests/42",
 });
 ```
 
-#### Digital Credentials API
+### x401
 
-For the [W3C Digital Credentials API](https://www.w3.org/TR/digital-credentials/) (`dc_api` response mode), `signedDcApiRequest` returns a signed request object you pass to `navigator.credentials.get`.
+With [x401](https://x401.proof.com/spec/latest/), your HTTP endpoint answers `401` with a proof
+request, and the user's AI agent presents their Proof Digital ID. To protect an endpoint on Cloudflare
+Workers, use [x401-workers](https://github.com/proof/x401-workers).
 
-`expectedOrigins` is required and lists the origins the request may be made from: your own site and any intermediate party it transits through (e.g. an AI-agent VM). `callbackUri` is not used by this flow.
+#### Enroll an x401 _Verifier_
 
-```javascript
-import { createClient, DCQL_QUERY_BASIC } from "@proof.com/proof-vc-server";
+An x401 _Verifier_'s client ID is the URL of its
+[Client ID Metadata Document](https://www.ietf.org/archive/id/draft-ietf-oauth-client-id-metadata-document-02.html).
+Build the document and serve it at that URL:
 
-const proof = createClient({
-  environment: "sandbox",
-  clientId: "caxdw5a7d",
-  useSecuredAuthorizationRequest: true,
-  privateKeyFactory: () => myPrivateKeyJwk,
-});
-
-const request = await proof.signedDcApiRequest({
-  nonce: "3e8e4918-e9fb-453a-a538-81152be15c1b",
-  dcqlQuery: DCQL_QUERY_BASIC,
-  expectedOrigins: ["https://example.com", "https://ai-agent.com"],
-});
-```
-
-#### Client ID Metadata Document
-
-`createClientIdMetadataDocument` builds the [Client ID Metadata Document](https://www.ietf.org/archive/id/draft-ietf-oauth-client-id-metadata-document-02.html) to serve at your `clientId` URL.
-
-```javascript
+```js
 import {
   agentsTrustListUrl,
   createClientIdMetadataDocument,
@@ -226,361 +281,234 @@ import {
 
 const document = await createClientIdMetadataDocument({
   environment: "sandbox",
-  clientId: "https://example.com/.well-known/proof-client.json", // the URL serving this document
-  clientName: "Example", // Your business name
-  redirectUris: [agentsTrustListUrl("sandbox")], // agentsTrustListUrl for x401 or your own redirect URIs for OID4VP
+  clientId: "https://example.com/.well-known/proof-client.json",
+  clientName: "Example",
+  redirectUris: [agentsTrustListUrl("sandbox")],
   jwks: [publicJwk],
 });
 ```
 
-### Verifier Enrollment
+Then create your _Verifier_ account. Proof sends an activation link to the email address. In
+`production`, the email address must be on the document's domain.
 
-Proof creates your Verifier account from your [Client ID Metadata Document](#client-id-metadata-document).
-`enroll` signs a [`private_key_jwt`](https://datatracker.ietf.org/doc/html/rfc7523) client assertion with the private key published in the document.
-In `production`, the email address is on the document's host or its registrable domain, with `www.` counting as the apex domain: `you@example.com` for `https://www.example.com/.well-known/proof-client.json` or `https://app.example.com/.well-known/proof-client.json`.
-
-```
-npx @proof.com/proof-vc-server enroll https://example.com/.well-known/proof-client.json --email you@example.com --key private-key.pem --environment sandbox
+```sh
+npx @proof.com/proof-vc-server enroll https://example.com/.well-known/proof-client.json \
+  --email you@example.com --key private-key.pem --environment sandbox
 ```
 
-## Verifiable Credential Presentation
+#### Protect an endpoint
 
-### Credential Type
+This example uses [x401-node](https://github.com/proof/x401-node) (`npm install @proof.com/x401-node`)
+to read and write the x401 headers. When the request has no `PROOF-RESPONSE` header, the endpoint
+answers `401` with a signed request for a Proof Digital ID. When the AI agent retries with the
+presentation, the endpoint verifies it.
 
-Proof issues Verifiable Credentials according to the [SD-JWT-VC specification](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-16.html) and publishes its [OID4VCI Credential Issuer Metadata](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#name-credential-issuer-metadata) at https://api.proof.com/.well-known/openid-credential-issuer.
+```js
+import {
+  agentsTrustListUrl,
+  createClient,
+  createVerifier,
+} from "@proof.com/proof-vc-server";
+import {
+  DC_API_PROTOCOL,
+  HEADER,
+  verifier as x401,
+} from "@proof.com/x401-node";
 
-`ProofCredentialV1`
-
-| claim                | accessor       | type    | description                                                        |
-| -------------------- | -------------- | ------- | ------------------------------------------------------------------ |
-| given_name           | `givenName`    | string  | user's given name as it appears on the verified identity document  |
-| family_name          | `familyName`   | string  | user's family name as it appears on the verified identity document |
-| birth_date           | `birthDate`    | string  | user's date of birth in ISO 8601 format (`YYYY-MM-DD`)             |
-| age_equal_or_over.18 | `isOver18`     | boolean | boolean confirming the user is 18 or older                         |
-| age_equal_or_over.21 | `isOver21`     | boolean | boolean confirming the user is 21 or older                         |
-| age_equal_or_over.65 | `isOver65`     | boolean | boolean confirming the user is 65 or older                         |
-| is_national.us       | `isNationalUS` | boolean | boolean confirming US nationality (`nationality:us` scope)         |
-
-All attributes are selectively disclosable and will return `undefined` if the claim wasn't disclosed. `getClaims()` returns the disclosed claims as issued and `toJSON()` the accessors above. A credential with a `vct` unknown to this SDK is returned as a `DefaultProofCredential` with a one-time `ProofVCWarning`.
-
-### Request
-
-Request a Verifiable Credential Presentation with an [OAuth 2.0](https://datatracker.ietf.org/doc/html/rfc6749) Authorization Request. See [Client Side](https://github.com/proof/proof-vc-common#client-side) and [Server Side](#server-side) above for the two entry points. Exactly one of `scope` or `dcqlQuery` must be given.
-
-#### Scopes
-
-Proof supports the `scope` parameter of the [OID4VP specification](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#name-using-scope-parameter-to-re). Each scope maps to a pre-defined DCQL query and returns a specific [Credential Type](#credential-type).
-
-Supported `scope` and their associated [Credential Type](#credential-type):
-
-| scope                                                          | Credential Type     | claims                                              | Key Binding JWT |
-| -------------------------------------------------------------- | ------------------- | --------------------------------------------------- | --------------- |
-| `urn:proof:params:scope:verifiable-credentials:basic`          | `ProofCredentialV1` | `given_name`, `family_name`, `age_equal_or_over.18` | yes             |
-| `urn:proof:params:scope:verifiable-credentials:nationality:us` | `ProofCredentialV1` | `age_equal_or_over.18`, `is_national.us`            | yes             |
-
-A scope unknown to this SDK is accepted and emits a one-time `ProofVCWarning`.
-
-#### Transaction Templates
-
-_Transaction Templates_ allow you to bind specific data to a Verifiable Credential Presentation. Proof uses the [Transaction Data](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#name-transaction-data) parameter of the OID4VP specification.
-The data is shown to the user during the Presentation flow and the user signs it with a Key Binding JWT (KB-JWT). The KB-JWT is returned as part of the [Presentation](https://dev.proof.com/docs/sd-jwt-vc-format).
-
-Transaction data is sensitive and is therefore attached **only from `@proof.com/proof-vc-server`**. The following _Transaction Templates_ are available:
-
-**urn:proof:params:vc:transaction-data:wire-instructions:v1**
-
-```javascript
-import { createClient, transactionData } from "@proof.com/proof-vc-server";
-
+const clientId = "https://example.com/.well-known/proof-client.json";
 const proof = createClient({
   environment: "sandbox",
-  clientId: "verifier-demo",
-  callbackUri: "https://example.com/verify_vp_token",
+  clientId,
+  useSecuredAuthorizationRequest: true,
+  privateKeyFactory: () => privateKey,
 });
-
-const data = transactionData.wireInstructions({
-  recipient: {
-    institution_name: "Crestline Financial",
-    individual_name: "Acme Corp LLC",
-    routing_number: "055000123",
-    account_number: "7293",
-  },
-  source: {
-    institution_name: "Sterling & Union",
-    individual_name: "Sterling & Union",
-    account_number: "4821",
-    routing_number: "091000456",
-  },
-  amount: 5000,
-  currency: "USD",
-  memo: "Invoice #2024-089",
-});
-const redirect = await proof.authorizationUrl({
-  nonce: "3e8e4918-e9fb-453a-a538-81152be15c1b",
-  scope: "urn:proof:params:scope:verifiable-credentials:basic",
-  state: "6A2B4CD830",
-  transactionData: data,
-});
-```
-
----
-
-**urn:proof:params:vc:transaction-data:payment-itemized:v1**
-
-```javascript
-import { createClient, transactionData } from "@proof.com/proof-vc-server";
-
-const proof = createClient({
-  environment: "sandbox",
-  clientId: "verifier-demo",
-  callbackUri: "https://example.com/verify_vp_token",
-});
-
-const data = transactionData.paymentItemized({
-  title: "Drive Shaft",
-  description: "The Roadhouse (18+), May 6 2026",
-  currency: "USD",
-  items: [
-    { quantity: 2, unit_cost: 40.0, label: "General Admission" },
-    { quantity: 2, unit_cost: 11.4, label: "Fees" },
-  ],
-});
-const redirect = await proof.authorizationUrl({
-  nonce: "3e8e4918-e9fb-453a-a538-81152be15c1b",
-  scope: "urn:proof:params:scope:verifiable-credentials:basic",
-  state: "6A2B4CD830",
-  transactionData: data,
-});
-```
-
----
-
-**urn:proof:params:vc:transaction-data:payment-mandate:v1**
-
-```javascript
-import { createClient, transactionData } from "@proof.com/proof-vc-server";
-
-const proof = createClient({
-  environment: "sandbox",
-  clientId: "verifier-demo",
-  callbackUri: "https://example.com/verify_vp_token",
-});
-
-const data = transactionData.paymentMandate({
-  payment_instrument: {
-    type: "wallet",
-    id: "did:example:visa-token-7829",
-    description: "Visa ••••7829",
-  },
-  payee: {
-    id: "did:example:summitco",
-    name: "Summit Co",
-    website: "summitco.com",
-  },
-  prompt_summary:
-    "Find me a 4-season backpacking tent from Summit Co under $500",
-  amount: 500,
-  currency: "USD",
-});
-const redirect = await proof.authorizationUrl({
-  nonce: "3e8e4918-e9fb-453a-a538-81152be15c1b",
-  scope: "urn:proof:params:scope:verifiable-credentials:basic",
-  state: "6A2B4CD830",
-  transactionData: data,
-});
-```
-
----
-
-**urn:proof:params:vc:transaction-data:session-data**
-
-```javascript
-import { createClient, transactionData } from "@proof.com/proof-vc-server";
-
-const proof = createClient({
-  environment: "sandbox",
-  clientId: "verifier-demo",
-  callbackUri: "https://example.com/verify_vp_token",
-});
-
-const data = transactionData.sessionData({
-  ip_address: "203.0.113.42",
-  device_id: "8f3c2a5e-4b1d-4c7e-9a0f-6d2b1e8c7f31",
-});
-const redirect = await proof.authorizationUrl({
-  nonce: "3e8e4918-e9fb-453a-a538-81152be15c1b",
-  scope: "urn:proof:params:scope:verifiable-credentials:basic",
-  transactionData: data,
-});
-```
-
----
-
-**urn:proof:params:vc:transaction-data:mpp-payment-challenge:v1**
-
-```javascript
-import { createClient, transactionData } from "@proof.com/proof-vc-server";
-
-const proof = createClient({
-  environment: "sandbox",
-  clientId: "verifier-demo",
-  callbackUri: "https://example.com/verify_vp_token",
-});
-
-const data = transactionData.mppPaymentChallenge({
-  challenge_id: "x7Tg2pLqR9mKvNwY3hBcZa",
-  realm: "api.example.com",
-  method: "tempo",
-  intent: "charge",
-  amount: "12.50",
-  currency: "USD",
-  recipient: "0x742d35Cc6634C0532925a3b844Bc9e7595f8fE21",
-  expires: "2026-10-26T12:00:00Z",
-});
-const redirect = await proof.authorizationUrl({
-  nonce: "3e8e4918-e9fb-453a-a538-81152be15c1b",
-  scope: "urn:proof:params:scope:verifiable-credentials:basic",
-  transactionData: data,
-});
-```
-
----
-
-The signed transaction data is a claim of the Key Binding JWT. After [Verify](#verify), `getTransactionData(type)` returns it, or `undefined` when the Key Binding JWT has no claim for that type:
-
-```javascript
-import { TX_DATA_TYPE } from "@proof.com/proof-vc-server";
-
-const challenge = credential.getTransactionData(
-  TX_DATA_TYPE.MPP_PAYMENT_CHALLENGE,
-);
-```
-
-| type                                                            | Key Binding JWT claim      |
-| --------------------------------------------------------------- | -------------------------- |
-| `urn:proof:params:vc:transaction-data:wire-instructions:v1`     | `wire_instructions_v1`     |
-| `urn:proof:params:vc:transaction-data:payment-itemized:v1`      | `payment_itemized_v1`      |
-| `urn:proof:params:vc:transaction-data:payment-mandate:v1`       | `payment_mandate_v1`       |
-| `urn:proof:params:vc:transaction-data:session-data`             | `session_data`             |
-| `urn:proof:params:vc:transaction-data:mpp-payment-challenge:v1` | `mpp_payment_challenge_v1` |
-
-### Verify
-
-Verification runs server-side. Create a verifier for the same `environment` you used in the request and reuse it: `production` verifies against the Proof Root CA R1, `sandbox` against the Development root (see [Certificate Authority](#certificate-authority)). A credential issued by another environment is rejected on its `iss`. Pass your `client_id` as `aud` to check the Key Binding JWT audience when one is present.
-
-Decode and verify a Verifiable Presentation's `vp_token`:
-
-```javascript
-import { createVerifier, ProofCredentialV1 } from "@proof.com/proof-vc-server";
-
-const verifier = createVerifier({ environment: "sandbox" });
-
-const vpToken = "eyJwcm9vZl9pZ..."; // the vp_token value as received
-const presentation = await verifier.verifyVPToken({
-  encodedVPToken: vpToken,
-  aud: "verifier-demo", // your client_id
-});
-const [verifiableCredential] = presentation.proof_id_default;
-
-if (
-  verifiableCredential instanceof ProofCredentialV1 &&
-  verifiableCredential.isOver18
-) {
-  purchaseItem();
-}
-```
-
-`verifyVPToken` returns the verified credentials keyed by DCQL credential id (`proof_id_default` for the `basic` scope), for the credential ids present in the `vp_token`.
-
-Verify a single SD-JWT-VC:
-
-```javascript
-import { createVerifier, ProofCredentialV1 } from "@proof.com/proof-vc-server";
-
-const verifier = createVerifier({ environment: "sandbox" });
-
-const encodedSDJWT = "eyJraWQiOiI3...";
-const verifiableCredential = await verifier.verify({
-  encodedSDJWT,
-  aud: "verifier-demo",
-});
-
-if (
-  verifiableCredential instanceof ProofCredentialV1 &&
-  verifiableCredential.isOver18
-) {
-  purchaseItem();
-}
-```
-
-#### Detached signatures
-
-Presentations delivered through [x401](https://dev.proof.com/docs/x401) arrive with the signature segment of both the Issuer-signed JWT and the Key Binding JWT detached. The Key Binding JWT header carries a critical `proof.com#sig-1` parameter ([RFC 7515 §4.1.11](https://www.rfc-editor.org/rfc/rfc7515#section-4.1.11)) holding the id of the detached signatures. `verify` and `verifyVPToken` fetch them from `POST /verifiable-credentials/v1/x401-signatures`, authenticated with a `private_key_jwt` client assertion built from your `clientId` and `privateKeyFactory`, splice them back to verify:
-
-```javascript
-import { createVerifier } from "@proof.com/proof-vc-server";
-
 const verifier = createVerifier({
   environment: "sandbox",
-  clientId: "https://verifier.example/.well-known/proof-client.json",
-  privateKeyFactory: () => privateKey, // the ES256 key published in your client metadata document
+  clientId,
+  privateKeyFactory: () => privateKey,
+});
+const nonces = new Set(); // Use your database in production.
+
+app.get("/protected", async (req, res) => {
+  const proofResponse = req.get(HEADER.PROOF_RESPONSE);
+  if (!proofResponse) {
+    const nonce = crypto.randomUUID();
+    nonces.add(nonce);
+    const request = await proof.signedDcApiRequest({
+      nonce,
+      scope: "urn:proof:params:scope:verifiable-credentials:basic",
+      expectedOrigins: [agentsTrustListUrl("sandbox")],
+    });
+    const payload = x401.buildPayload({
+      credentialRequirements: {
+        digital: {
+          requests: [{ protocol: DC_API_PROTOCOL.SIGNED, data: { request } }],
+        },
+      },
+    });
+    return res
+      .status(401)
+      .set(HEADER.PROOF_REQUEST, x401.encodePayload(payload))
+      .end();
+  }
+
+  const artifact = x401.decodeResultArtifact(proofResponse);
+  const credentialResult =
+    artifact.credential_result ??
+    (await (await fetch(artifact.credential_result_uri)).json());
+  const presentation = await verifier.verifyVPToken({
+    encodedVPToken: credentialResult.data.vp_token,
+    aud: clientId,
+  });
+  const credential = presentation.proof_id_default?.[0];
+  if (!nonces.delete(credential?.getNonce())) {
+    return res.status(401).end();
+  }
+
+  res.json(credential.toJSON());
 });
 ```
 
-Verifiers can pay for x401 presentations with [x402](https://dev.proof.com/docs/x401-signatures#pay-with-x402), otherwise Proof charges their default account payment method. The endpoint answers `402` with payment requirements until the request is repeated with a `PAYMENT-SIGNATURE` header. Pass an x402-capable `fetch` to pay automatically; without one, `verify` rejects with the `payment_required` error code.
+`app` is the one from the [Quickstart](#quickstart). `privateKey` is the private key of your
+_Verifier_. Proof sends the presentation by reference, so the endpoint fetches
+`credential_result_uri` when it is set. x401 presentations have detached signatures:
+`verifyVPToken` gets them from Proof with your client ID and private key.
 
-```javascript
+#### Pay for signatures with x402 (optional)
+
+By default, Proof charges your account's default payment method for x401 signatures. To pay with
+[x402](https://dev.proof.com/docs/x401-signatures#pay-with-x402) instead, pass a `fetch` that pays.
+`evmPrivateKey` is your wallet's private key.
+
+```js
+import { createVerifier } from "@proof.com/proof-vc-server";
 import { wrapFetchWithPaymentFromConfig } from "@x402/fetch";
 import { ExactEvmScheme } from "@x402/evm";
 import { privateKeyToAccount } from "viem/accounts";
 
-const wallet = privateKeyToAccount(process.env.EVM_PRIVATE_KEY);
+const wallet = privateKeyToAccount(evmPrivateKey);
 
 const verifier = createVerifier({
-  environment: "production",
-  clientId,
-  privateKeyFactory,
+  environment: "sandbox",
+  clientId: "https://example.com/.well-known/proof-client.json",
+  privateKeyFactory: () => privateKey,
   fetch: wrapFetchWithPaymentFromConfig(fetch, {
     schemes: [{ network: "eip155:*", client: new ExactEvmScheme(wallet) }],
   }),
 });
 ```
 
-The endpoint can answer `409`; the verifier retries after the `Retry-After` delay.
+### Request specific claims
 
-#### Nonce
+`scope` sets the claims that the user presents. Each scope returns its credentials under one key of
+the `verifyVPToken` result.
 
-Validating the `nonce` is out of scope of `verify` and `verifyVPToken`. The `nonce` signed in the Key Binding JWT is exposed on the returned credential and should be validated by the caller against the `nonce` sent in the [Request](#request). Some credentials are presented without a Key Binding JWT; `getNonce()` then returns `undefined` and there is no `nonce` to compare:
+| `scope`                                                        | Claims                                              | Result key                |
+| -------------------------------------------------------------- | --------------------------------------------------- | ------------------------- |
+| `urn:proof:params:scope:verifiable-credentials:basic`          | `given_name`, `family_name`, `age_equal_or_over.18` | `proof_id_default`        |
+| `urn:proof:params:scope:verifiable-credentials:nationality:us` | `age_equal_or_over.18`, `is_national.us`            | `proof_id_nationality_us` |
 
-```javascript
-const presentation = await verifier.verifyVPToken({
-  encodedVPToken: vpToken,
-  aud: "verifier-demo",
-});
+## Reference
 
-for (const credential of presentation.proof_id_default) {
-  const nonce = credential.getNonce();
-  if (nonce !== undefined && nonce !== session.nonce) {
-    throw new Error("nonce mismatch");
-  }
-}
-```
+`createClient` options:
 
-## Certificate Authority
+| Option                           | Default    | Description                                                                                    |
+| -------------------------------- | ---------- | ---------------------------------------------------------------------------------------------- |
+| `environment`                    |            | `"sandbox"` or `"production"`                                                                  |
+| `clientId`                       |            | Your Proof client ID                                                                           |
+| `callbackUri`                    |            | Where Proof sends the presentation; one of your client's redirect URIs                         |
+| `responseMode`                   | `fragment` | `direct_post` posts the presentation to `callbackUri`; `fragment` sends the user there with it |
+| `clientSecret`                   |            | Required with `usePushedAuthorizationRequest`                                                  |
+| `usePushedAuthorizationRequest`  | `false`    | Send the request with PAR                                                                      |
+| `useSecuredAuthorizationRequest` | `false`    | Sign the request (JAR); needs `privateKeyFactory`                                              |
+| `privateKeyFactory`              |            | Returns your ES256 private key: JWK, `CryptoKey` or `KeyObject`                                |
+| `requestObjectLifetime`          | `300`      | Lifetime of the signed request, in seconds                                                     |
+| `timeout`                        | `10000`    | HTTP timeout, in milliseconds                                                                  |
+| `fetch`                          | `fetch`    | The `fetch` to use for HTTP requests                                                           |
 
-Proof's Verifiable Credentials are issued by our [Certificate Authority](https://www.proof.com/legal/certificate-policy)
-following the CA/B Forum Baseline Requirements for the Issuance and Management of Publicly-Trusted TLS Server Certificates published at https://www.cabforum.org.
+`authorizationUrl` parameters:
 
-The Proof Root CA R1 Certificate is published at http://cert.proof.com/proof-root-ca-r1.crt and
-is also committed in this repository [proof_root_ca_r1.ts](https://github.com/proof/proof-vc-common/blob/main/packages/server/src/certificates/trust_store/proof_root_ca_r1.ts).
+| Parameter         | Required | Description                                                                    |
+| ----------------- | -------- | ------------------------------------------------------------------------------ |
+| `nonce`           | yes      | A new random value for each request; compare it when you verify                |
+| `scope`           | yes      | The claims to request; see [Request specific claims](#request-specific-claims) |
+| `transactionData` | no       | A Signed Mandate; see [Signed Mandates](#signed-mandates)                      |
+| `state`           | no       | A value that Proof sends back with the presentation                            |
+| `loginHint`       | with PAR | The user's email, pre-filled on Proof                                          |
 
-The sandbox Root CA R1 Development certificate is also committed in this repository [proof_root_ca_r1_development.ts](https://github.com/proof/proof-vc-common/blob/main/packages/server/src/certificates/trust_store/proof_root_ca_r1_development.ts) and used when `environment: "sandbox"`.
+`createVerifier` options:
 
-## Documentation
+| Option              | Description                                                                     |
+| ------------------- | ------------------------------------------------------------------------------- |
+| `environment`       | `"sandbox"` or `"production"`; use the same one as the request                  |
+| `clientId`          | Your client ID; required for [x401 presentations](#protect-an-endpoint)         |
+| `privateKeyFactory` | Your ES256 private key; required for [x401 presentations](#protect-an-endpoint) |
+| `timeout`, `fetch`  | As in `createClient`                                                            |
 
-_Digital Credentials_ guides https://dev.proof.com/docs/digital-credentials-overview \
-_API Documentation_ https://dev.proof.com/reference/authorizeverifiablecredentialpresentation
+| Function                         | Description                                                                    |
+| -------------------------------- | ------------------------------------------------------------------------------ |
+| `createClient`                   | Creates a client that builds authorization requests                            |
+| `createVerifier`                 | Creates a _Verifier_ with `verifyVPToken`, and `verify` for a single SD-JWT-VC |
+| `createClientIdMetadataDocument` | Builds a Client ID Metadata Document                                           |
+| `enroll`                         | Creates a _Verifier_ account, as the `enroll` command does                     |
+| `agentsTrustListUrl`             | The redirect URI for x401 _Verifiers_                                          |
+
+## Credentials
+
+`verifyVPToken` returns the credentials by result key, such as `proof_id_default`. Each credential
+is a `ProofCredentialV1`, or a `DefaultProofCredential` when this SDK does not know its type.
+
+| Claim                  | `ProofCredentialV1` property | Type    |
+| ---------------------- | ---------------------------- | ------- |
+| `given_name`           | `givenName`                  | string  |
+| `family_name`          | `familyName`                 | string  |
+| `age_equal_or_over.18` | `isOver18`                   | boolean |
+| `is_national.us`       | `isNationalUS`               | boolean |
+
+A property is `undefined` when the user did not present that claim. All credentials have these
+methods:
+
+| Method                     | Returns                                                       |
+| -------------------------- | ------------------------------------------------------------- |
+| `getNonce()`               | The nonce that the user signed, or `undefined`                |
+| `getTransactionData(type)` | The Signed Mandate of that type, or `undefined`               |
+| `getClaims()`              | The presented claims, as issued                               |
+| `toJSON()`                 | The credential type, the format, the nonce and the properties |
+| `getSDJWT()`               | The decoded SD-JWT                                            |
+
+## Errors
+
+The SDK throws `ProofVCError`. Its `code` tells you what failed:
+
+| `code`                       | Cause                                                                |
+| ---------------------------- | -------------------------------------------------------------------- |
+| `invalid_config`             | An option or a request parameter is missing or not valid             |
+| `invalid_input`              | The `vp_token` or the SD-JWT-VC is malformed                         |
+| `authorization_server_error` | Proof answered with an error; read `status`                          |
+| `verification_failed`        | The presentation did not pass verification                           |
+| `payment_required`           | Proof asks for payment for x401 signatures; pass a `fetch` that pays |
+
+## Certificate authority
+
+Proof issues Proof Digital IDs from its
+[certificate authority](https://www.proof.com/legal/certificate-policy). `production` verifies them
+against the [Proof Root CA R1](http://cert.proof.com/proof-root-ca-r1.crt)
+([in this repository](https://github.com/proof/proof-vc-common/blob/main/packages/server/src/certificates/trust_store/proof_root_ca_r1.ts)). `sandbox`
+verifies them against the
+[development root](https://github.com/proof/proof-vc-common/blob/main/packages/server/src/certificates/trust_store/proof_root_ca_r1_development.ts).
+
+## Links
+
+- [Read the Proof Digital ID guides](https://dev.proof.com/docs/digital-credentials-overview)
+- [Read the API documentation](https://dev.proof.com/reference/authorizeverifiablecredentialpresentation)
+- [Add a "Continue with Proof" button with proof-vc-web](https://github.com/proof/proof-vc-web)
+- [Protect an endpoint with x401-workers](https://github.com/proof/x401-workers)
+- [Try Proof Digital IDs](https://try.proof.com)
 
 ## Contributing
 
 [Contribution guidelines for this project](https://github.com/proof/proof-vc-common/blob/main/CONTRIBUTING.md)
+
+## License
+
+[Apache-2.0](https://github.com/proof/proof-vc-common/blob/main/LICENSE)

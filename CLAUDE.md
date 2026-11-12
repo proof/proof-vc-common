@@ -42,7 +42,15 @@ grep -lE '(jose|@sd-jwt|@owf|node:)' packages/common/dist/*.js
 
 ## Package READMEs
 
-`packages/*/README.md` are generated from the root `README.md`: each holds the root sections that apply to its package (shared sections in both, Client Side common-only, server features and Verify server-only), with a filtered TOC and absolute GitHub links. Never edit them by hand; regenerate both after changing the root README.
+The repo has 3 READMEs. npm shows the package ones. Update the 3 together, in the same commit, as part of any change to the public API or the docs:
+
+| README                      | Content                                                                                                                        |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `README.md`                 | `# proof-vc-server`, the backend SDK: every Usage task, all reference tables. No browser code.                                 |
+| `packages/server/README.md` | Same as the root, with absolute links                                                                                          |
+| `packages/common/README.md` | Short: what proof-vc-web and proof-vc-server share, links to both, Installation and the `createClient` reference. No tutorial. |
+
+In the package READMEs, links to files in the repo are absolute (`https://github.com/proof/proof-vc-common/blob/main/...`), because npm cannot resolve relative links.
 
 ## Essential Commands
 
