@@ -270,8 +270,8 @@ const url = proof.jarByReferenceAuthorizationUrl({
 ### Agentic Identity Verification
 
 With Agentic Identity Verification, your web page or endpoint asks for the user's Proof Digital ID
-before it shows its content. AI agents complete the identity check with two links, presentation then retrieval. The Agentic
-Identity Verification page works natively across the entire AI ecosystem.
+before it shows its content. AI agents complete the identity check with two links, presentation then
+retrieval. The Agentic Identity Verification page works natively across the entire AI ecosystem.
 
 1. An AI agent calls your page or endpoint. It answers `200` with a verification page.
 2. The agent opens the identity link of the page to start the identity check with Proof.
