@@ -290,19 +290,19 @@ const check = identityCheck({
   requestUri: (id) => `https://example.com/identity-check/requests/${id}`,
   resultUrl: (id) => `https://example.com/article/${id}`,
 });
-const checks = new Map(); // Use your database in production.
+const storage = new Map(); // Use your database in production.
 
 const app = express();
 app.use(express.urlencoded());
 
 app.get("/article", (req, res) => {
   const { id, nonce } = check.start();
-  checks.set(id, { nonce });
+  storage.set(id, { nonce });
   res.send(check.page(id));
 });
 
 app.get("/identity-check/requests/:id", async (req, res) => {
-  const pending = checks.get(req.params.id);
+  const pending = storage.get(req.params.id);
   if (!pending) {
     return res.sendStatus(404);
   }
@@ -311,7 +311,7 @@ app.get("/identity-check/requests/:id", async (req, res) => {
 });
 
 app.post("/identity-check/callback", async (req, res) => {
-  const pending = checks.get(req.body.state);
+  const pending = storage.get(req.body.state);
   const credential = await check.verify(req.body, pending?.nonce);
   if (pending && credential) {
     pending.credential ??= credential;
@@ -320,7 +320,7 @@ app.post("/identity-check/callback", async (req, res) => {
 });
 
 app.get("/article/:id", (req, res) => {
-  if (!checks.get(req.params.id)?.credential) {
+  if (!storage.get(req.params.id)?.credential) {
     return res.set("Cache-Control", "no-store").send(check.page(req.params.id));
   }
   res.send("The full article");
