@@ -269,10 +269,9 @@ const url = proof.jarByReferenceAuthorizationUrl({
 
 ### Agentic Identity Verification
 
-With Agentic Identity Verification, you can put any web page or endpoint behind an identity check
-that AI agents perform natively. Your page answers `200` with a verification page that has two
-links. The first link sends the user to Proof to present their Proof Digital ID. The second link
-returns your content after Proof sends you the presentation.
+Your page or endpoint answers `200` with a verification page that has two links. The first link
+sends the user to Proof to present their Proof Digital ID. The second link returns your content
+after Proof sends you the presentation.
 
 `identityCheck` signs the request, builds the verification page and verifies the presentation. You
 store each check and serve four routes:
@@ -326,9 +325,6 @@ app.get("/article/:id", (req, res) => {
   res.send("The full article");
 });
 ```
-
-The callback must be a public HTTPS URL and one of your client's redirect URIs. Add the public key
-of `privateKeyFactory` to your OAuth application.
 
 ### x401
 
