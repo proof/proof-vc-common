@@ -6,10 +6,13 @@ Your server sends the user to Proof with an
 [OpenID for Verifiable Presentations](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html)
 (OID4VP) authorization request. The user presents their Proof Digital ID. Proof sends the
 presentation (`vp_token`) to your server, which verifies it and reads the claims. To have the user
-sign an action, such as a payment, add a [Signed Mandate](#signed-mandates) to the request. With
-[x401](#x401), AI agents present the user's Proof Digital ID to your HTTP endpoints. With
-[Agentic Identity Verification](#agentic-identity-verification), you can put any web page or
-endpoint behind an identity check that all AI agents can do.
+sign an action, such as a payment, add a [Signed Mandate](#signed-mandates) to the request.
+
+AI agents can also present the user's Proof Digital ID:
+
+- [Agentic Identity Verification](#agentic-identity-verification) puts any web page or endpoint
+  behind an identity check that AI agents perform natively.
+- [x401](#x401) lets AI agents present the Proof Digital ID to your HTTP endpoints.
 
 To request Proof Digital IDs on your website in a one-click button, use
 [proof-vc-web](https://github.com/proof/proof-vc-web).
@@ -271,9 +274,9 @@ const url = proof.jarByReferenceAuthorizationUrl({
 ### Agentic Identity Verification
 
 With Agentic Identity Verification, you can put any web page or endpoint behind an identity check
-that all AI agents can do. Your page answers `200` with a verification page that has two links. The
-first link sends the user to Proof to present their Proof Digital ID. The second link returns your
-content after Proof sends you the presentation.
+that AI agents perform natively. Your page answers `200` with a verification page that has two
+links. The first link sends the user to Proof to present their Proof Digital ID. The second link
+returns your content after Proof sends you the presentation.
 
 Create a client that signs the request and sends the presentation to your callback. Keep each check
 in a store:
