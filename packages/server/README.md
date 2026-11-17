@@ -269,6 +269,10 @@ const url = proof.jarByReferenceAuthorizationUrl({
 
 ### Agentic Identity Verification
 
+With Agentic Identity Verification, your web page or endpoint asks for the user's Proof Digital ID
+before it shows its content. AI agents complete the check with two plain links, and need no SDK
+and no protocol support.
+
 1. An AI agent calls your page or endpoint. It answers `200` with a verification page.
 2. The agent opens the identity link of the page to start the identity check with Proof.
 3. The user presents their Proof Digital ID. Proof sends the presentation to your server.
