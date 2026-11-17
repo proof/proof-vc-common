@@ -40,6 +40,7 @@ export type ServerClientConfig = Omit<ClientConfig, "callbackUri"> &
 
 export type ServerAuthorizationRequestParams = AuthorizationRequestParams & {
   transactionData?: TransactionData | string;
+  accessToken?: string;
 };
 
 export type DCAPIAuthorizationRequestParams =
@@ -136,6 +137,17 @@ export function createClient(config: ServerClientConfig): ServerVCClient {
     return search;
   }
 
+  async function constructSearchParams(
+    params: ServerAuthorizationRequestParams,
+  ): Promise<URLSearchParams> {
+    return config.useSecuredAuthorizationRequest === true
+      ? new URLSearchParams({
+          client_id: config.clientId,
+          request: await signedRequest(params),
+        })
+      : buildParams(params);
+  }
+
   async function signedRequest(
     params: ServerAuthorizationRequestParams,
   ): Promise<string> {
@@ -143,7 +155,7 @@ export function createClient(config: ServerClientConfig): ServerVCClient {
   }
 
   async function pushAuthorizationRequest(
-    search: URLSearchParams,
+    params: ServerAuthorizationRequestParams,
     options?: RequestOptions,
   ): Promise<string> {
     if (config.clientSecret === undefined) {
@@ -152,7 +164,14 @@ export function createClient(config: ServerClientConfig): ServerVCClient {
         "pushed authorization requests require `clientSecret` in the client config",
       );
     }
+    const search = await constructSearchParams(params);
     search.set("client_secret", config.clientSecret);
+    const headers = new Headers();
+    headers.set("Content-Type", "application/x-www-form-urlencoded");
+    if (params?.accessToken) {
+      headers.set("Authorization", `Bearer ${params.accessToken}`);
+    }
+
     const { data } = await fetchJson({
       url: new URL(
         `${OID4VP_URI}/par`,
@@ -161,7 +180,7 @@ export function createClient(config: ServerClientConfig): ServerVCClient {
       description: "pushed authorization request",
       init: {
         method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        headers,
         body: search.toString(),
       },
       config,
@@ -189,16 +208,12 @@ export function createClient(config: ServerClientConfig): ServerVCClient {
       params: ServerAuthorizationRequestParams,
       options?: RequestOptions,
     ): Promise<string> {
-      const search =
-        config.useSecuredAuthorizationRequest === true
-          ? new URLSearchParams({
-              client_id: config.clientId,
-              request: await signedRequest(params),
-            })
-          : buildParams(params);
       return config.usePushedAuthorizationRequest === true
-        ? pushAuthorizationRequest(search, options)
-        : authorizeUrlFromSearchParams(config.environment, search);
+        ? pushAuthorizationRequest(params, options)
+        : authorizeUrlFromSearchParams(
+            config.environment,
+            await constructSearchParams(params),
+          );
     },
 
     signedAuthorizationRequest(

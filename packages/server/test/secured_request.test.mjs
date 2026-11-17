@@ -28,7 +28,12 @@ async function withStubbedFetch(fn, { requestUri = "urn:par:123" } = {}) {
   const calls = [];
   globalThis.fetch = async (url, options) => {
     const href = String(url);
-    calls.push({ url: href, body: options?.body, signal: options?.signal });
+    calls.push({
+      url: href,
+      body: options?.body,
+      signal: options?.signal,
+      headers: options?.headers,
+    });
     assert.ok(href.endsWith("/par"), `unexpected fetch of ${href}`);
     return Response.json({ request_uri: requestUri }, { status: 201 });
   };
@@ -243,6 +248,33 @@ test("authorizationUrl over PAR posts the JAR and client_secret in the request b
     const parsed = new URL(url);
     assert.equal(parsed.searchParams.get("request_uri"), "urn:par:123");
     assert.equal(parsed.searchParams.get("client_secret"), null);
+  });
+});
+
+test("authorizationUrl with PAR passes user access token if provided", async () => {
+  await withStubbedFetch(async (calls) => {
+    const client = securedClient({
+      clientSecret: "s3cret",
+      usePushedAuthorizationRequest: true,
+    });
+    const url = await client.authorizationUrl({
+      scope: "openid",
+      nonce: "n",
+      accessToken: "user-access-token",
+    });
+
+    const parCall = calls.find((c) => c.url.endsWith("/par"));
+    assert.ok(parCall, "expected a PAR request");
+    const body = new URLSearchParams(parCall.body);
+    assert.equal(body.get("client_id"), CLIENT_ID);
+    assert.equal(body.get("client_secret"), "s3cret");
+
+    const parsed = new URL(url);
+    assert.equal(parsed.searchParams.get("request_uri"), "urn:par:123");
+    assert.equal(parsed.searchParams.get("client_secret"), null);
+
+    const headers = parCall.headers;
+    assert.equal(headers.get("Authorization"), "Bearer user-access-token");
   });
 });
 
