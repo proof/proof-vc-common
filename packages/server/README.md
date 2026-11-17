@@ -269,9 +269,10 @@ const url = proof.jarByReferenceAuthorizationUrl({
 
 ### Agentic Identity Verification
 
-Your page or endpoint answers `200` with a verification page that has two links. The first link
-sends the user to Proof to present their Proof Digital ID. The second link returns your content
-after Proof sends you the presentation.
+1. An AI agent calls your page or endpoint. It answers `200` with a verification page.
+2. The agent opens the identity link of the page to start the identity check with Proof.
+3. The user presents their Proof Digital ID. Proof sends the presentation to your server.
+4. The agent opens the result link of the page to get your content.
 
 `identityCheck` signs the request, builds the verification page and verifies the presentation. You
 store each check and serve four routes:
@@ -288,6 +289,8 @@ const check = identityCheck({
   callbackUri: "https://example.com/identity-check/callback",
   requestUri: (id) => `https://example.com/identity-check/requests/${id}`,
   resultUrl: (id) => `https://example.com/article/${id}`,
+  verifierName: "example.com",
+  description: "The full article about the medical study.",
 });
 const storage = new Map(); // Use your database in production.
 
@@ -512,6 +515,8 @@ the `verifyVPToken` result.
 | `callbackUri`       | Where Proof sends the presentation; one of your client's redirect URIs         |
 | `requestUri`        | `(id) => URL` of the route that serves the signed request                      |
 | `resultUrl`         | `(id) => URL` of the route that returns the content                            |
+| `verifierName`      | Your domain name or your name, shown as the requester on the page              |
+| `description`       | What the protected content is, shown on the page                               |
 | `timeout`, `fetch`  | As in `createClient`                                                           |
 
 `identityCheck` returns:

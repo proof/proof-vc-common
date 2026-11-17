@@ -22,6 +22,10 @@ export type IdentityCheckConfig = HttpConfig & {
   requestUri: (id: string) => string;
   /** Your URL that returns the content after the check. */
   resultUrl: (id: string) => string;
+  /** Your domain name or your name, shown as the requester on the page. */
+  verifierName: string;
+  /** What the protected content is, shown on the page. */
+  description: string;
 };
 
 export type IdentityCheckStart = {
@@ -64,6 +68,8 @@ function bodyField(body: unknown, name: string): unknown {
 
 export function identityCheck(config: IdentityCheckConfig): IdentityCheck {
   assertNonEmptyString(config.scope, "scope");
+  assertNonEmptyString(config.verifierName, "verifierName");
+  assertNonEmptyString(config.description, "description");
   if (
     typeof config.requestUri !== "function" ||
     typeof config.resultUrl !== "function"
@@ -101,6 +107,8 @@ export function identityCheck(config: IdentityCheckConfig): IdentityCheck {
           requestUri: config.requestUri(id),
         }),
         resultUrl: config.resultUrl(id),
+        verifierName: config.verifierName,
+        description: config.description,
       });
     },
 

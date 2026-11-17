@@ -22,6 +22,8 @@ function create(overrides = {}) {
     callbackUri: "https://example.com/identity-check/callback",
     requestUri: (id) => `https://example.com/identity-check/requests/${id}`,
     resultUrl: (id) => `https://example.com/article/${id}`,
+    verifierName: "Example News",
+    description: "The full article on the medical study.",
     ...overrides,
   });
 }
@@ -39,7 +41,7 @@ test("start returns a new random id and nonce", () => {
 test("page links to Proof with the request URI and to the result URL", () => {
   const html = create().page("42");
   const authorize = html
-    .match(/href="([^"]+)">Default Identity Wallet/)[1]
+    .match(/href="([^"]+)">[\s\S]*?Present Identity/)[1]
     .replaceAll("&amp;", "&");
   const url = new URL(authorize);
   assert.equal(url.origin, "https://api.fairfax.proof.com");
@@ -49,12 +51,15 @@ test("page links to Proof with the request URI and to the result URL", () => {
     "https://example.com/identity-check/requests/42",
   );
   assert.ok(html.includes('href="https://example.com/article/42"'));
-  assert.ok(html.includes("<strong>example.com</strong>"));
+  assert.ok(html.includes("<strong>Example News</strong>"));
+  assert.ok(html.includes("The full article on the medical study."));
 });
 
-test("page escapes HTML in the result URL", () => {
+test("page escapes HTML in the result URL, the name and the description", () => {
   const html = create({
     resultUrl: () => 'https://example.com/a"><script>x</script>',
+    verifierName: "<script>name</script>",
+    description: "<script>description</script>",
   }).page("42");
   assert.ok(!html.includes("<script>"));
 });
@@ -106,4 +111,14 @@ test("rejects requestUri or resultUrl that are not functions", () => {
     () => create({ requestUri: "https://example.com/requests" }),
     (error) => error instanceof ProofVCError && error.code === "invalid_config",
   );
+});
+
+test("rejects an empty verifierName or description", () => {
+  for (const overrides of [{ verifierName: "" }, { description: "" }]) {
+    assert.throws(
+      () => create(overrides),
+      (error) =>
+        error instanceof ProofVCError && error.code === "invalid_config",
+    );
+  }
 });
