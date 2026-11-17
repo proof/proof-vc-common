@@ -71,7 +71,7 @@ const verifier = createVerifier({ environment: "sandbox" });
 const nonces = new Map(); // Use your database in production.
 
 const app = express();
-app.use(express.urlencoded({ extended: false }));
+app.use(express.urlencoded());
 ```
 
 When the user starts the checkout, send them to Proof with a new `nonce` and a new `state`:
@@ -293,7 +293,7 @@ const check = identityCheck({
 const checks = new Map(); // Use your database in production.
 
 const app = express();
-app.use(express.urlencoded({ extended: false }));
+app.use(express.urlencoded());
 
 app.get("/article", (req, res) => {
   const { id, nonce } = check.start();
