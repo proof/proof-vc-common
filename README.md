@@ -290,7 +290,7 @@ const check = identityCheck({
   requestUri: (id) => `https://example.com/identity-check/requests/${id}`,
   resultUrl: (id) => `https://example.com/article/${id}`,
   verifierName: "example.com",
-  description: "The full article about the medical study.",
+  description: "A full article about a medical study",
 });
 const storage = new Map(); // Use your database in production.
 
