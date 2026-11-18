@@ -16,15 +16,10 @@ export type IdentityCheckConfig = HttpConfig & {
   clientId: string;
   privateKeyFactory: PrivateKeyFactory;
   scope: Scope;
-  /** Where Proof posts the presentation; one of your client's redirect URIs. */
   callbackUri: string;
-  /** Your URL that serves the signed request of a check. */
   requestUri: (id: string) => string;
-  /** Your URL that returns the content after the check. */
   resultUrl: (id: string) => string;
-  /** Your domain name or your name, shown as the requester on the page. */
   verifierName: string;
-  /** What the protected content is, shown on the page. */
   description: string;
 };
 
@@ -34,19 +29,10 @@ export type IdentityCheckStart = {
 };
 
 export type IdentityCheck = {
-  /** Content type of the signed request that `request` returns. */
   readonly requestContentType: string;
-  /** Returns a new check ID and nonce. Store both. */
   start(): IdentityCheckStart;
-  /** Returns the verification page of a check, with the link to Proof and the result URL. */
   page(id: string): string;
-  /** Returns the signed request of a check, with `state` set to `id`. */
   request(id: string, nonce: string): Promise<string>;
-  /**
-   * Verifies the presentation that Proof posts to `callbackUri`. Returns the
-   * credential, or `undefined` when the user declined, the presentation is
-   * invalid or its nonce is not `nonce`.
-   */
   verify(
     body: unknown,
     nonce: string | undefined,

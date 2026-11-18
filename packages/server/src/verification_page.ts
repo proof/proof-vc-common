@@ -1,13 +1,9 @@
 import { ProofVCError } from "@proof.com/proof-vc-common";
 
 export type VerificationPageParams = {
-  /** Proof authorization URL, from `jarByReferenceAuthorizationUrl`. */
   authorizationUrl: string;
-  /** Your URL that returns the content after the user presents their credential. */
   resultUrl: string;
-  /** Your domain name or your name, shown as the requester. */
   verifierName: string;
-  /** What the protected content is. */
   description: string;
 };
 
@@ -39,11 +35,6 @@ function parseHttpUrl(value: unknown, name: string): URL {
   return url;
 }
 
-/**
- * Builds the HTML page that a protected page or endpoint returns with a `200`
- * status. The page tells the reader to open `authorizationUrl` to present a
- * credential, then `resultUrl` to get the content.
- */
 export function renderVerificationPage({
   authorizationUrl,
   resultUrl,
