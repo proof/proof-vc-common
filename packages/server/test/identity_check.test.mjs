@@ -94,7 +94,7 @@ test("start returns a new random id and nonce", () => {
 test("page links to Proof with the request URI and to the result URL", () => {
   const html = create().page("42");
   const authorize = html
-    .match(/href="([^"]+)">[\s\S]*?Present Identity/)[1]
+    .match(/href="([^"]+)">[\s\S]*?Approve Access/)[1]
     .replaceAll("&amp;", "&");
   const url = new URL(authorize);
   assert.equal(url.origin, "https://api.fairfax.proof.com");
@@ -104,7 +104,7 @@ test("page links to Proof with the request URI and to the result URL", () => {
     "https://example.com/identity-check/requests/42",
   );
   assert.ok(html.includes('href="https://example.com/article/42"'));
-  assert.ok(html.includes("<strong>Example News</strong>"));
+  assert.ok(html.includes("credential with Example News."));
   assert.ok(html.includes("The full article on the medical study."));
 });
 
