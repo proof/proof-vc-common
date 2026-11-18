@@ -278,8 +278,7 @@ retrieval. The Agentic Identity Verification page works natively across the enti
 3. The user presents their Proof Digital ID. Proof sends the presentation to your server.
 4. The agent opens the result link of the page to get your content.
 
-`identityCheck` signs the request, builds the verification page and verifies the presentation. You
-store each check and serve four routes:
+This Express app protects an article:
 
 ```js
 import express from "express";
