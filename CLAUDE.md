@@ -31,7 +31,7 @@ Versioning is **lockstep**: both packages always share one version, published to
 - `index.ts` — `export * from "@proof.com/proof-vc-common"` then the server surface (its `createClient` intentionally shadows the frontend one)
 - `client.ts` — server `createClient` (PAR, `transactionData`, RFC 9101 JAR signing via `jose`: `authorizationUrl` by value, `signedAuthorizationRequest` + `jarByReferenceAuthorizationUrl` by reference, `signedDcApiRequest`); `authorizationUrl` is `async` (PAR fetches + JAR signing). Secured requests need `useSecuredAuthorizationRequest: true` and a `privateKeyFactory` (ES256 JWK); `aud` is the AS `issuer` fetched from `AS_METADATA_URL`
 - `verifier.ts` — `createVerifier` → `verify` / `verifyVPToken`
-- `transaction_data.ts`, `proof_credentials.ts`, `proof_credential_factory.ts`, `utils.ts`, `types.ts` (`ProofCredential`/`VPToken`/`TrustRoot`), `certificates/**`
+- `transaction_data.ts`, `transaction_data_check.ts` (`checkTransactionData` / `assertTransactionData`), `proof_credentials.ts`, `proof_credential_factory.ts`, `utils.ts`, `types.ts` (`ProofCredential`/`VPToken`/`TrustRoot`), `certificates/**`
 
 Verify `common` stays free of runtime leaks after build:
 
@@ -102,12 +102,13 @@ In `packages/server/src/verifier.ts`:
 In `packages/server/src/transaction_data.ts`:
 
 1. Add the URN literal to `TX_DATA_TYPE` (keep `as const`).
-2. Define payload and envelope types (use the `Envelope<T, P>` helper).
-3. Add the variant to the `TransactionData` union.
-4. Add a factory to the `transactionData` namespace.
-5. Re-export the new type names from `packages/server/src/index.ts`.
+2. Add the key binding claim name to `TX_DATA_CLAIM` — `satisfies Record<TransactionDataType, string>` fails typecheck without it. It must equal the API's `vc_claim_key` for that type, because `getTransactionData()` reads the claim by that name.
+3. Define payload and envelope types (use the `Envelope<T, P>` helper).
+4. Add the variant to the `TransactionData` union.
+5. Add a factory to the `transactionData` namespace.
+6. Re-export the new type names from `packages/server/src/index.ts`.
 
-`encodeTransactionData()` operates on the union — no encoder changes.
+`encodeTransactionData()` operates on the union — no encoder changes. `checkTransactionData()` compares hashes over the encoded bytes, so it needs no per-type code either.
 
 ## Publishing
 

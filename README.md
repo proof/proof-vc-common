@@ -128,38 +128,46 @@ shows the mandate to the user, and the user signs it with their Proof Digital ID
 
 #### Request a signed mandate
 
-Pass the mandate as `transactionData`. Prefer a
+Pass the mandate as `transactionData`. Store the encoded mandate with the nonce, to check it
+against the presentation later. Prefer a
 [pushed authorization request](#use-a-pushed-authorization-request), so that the mandate does not
 make the URL too long.
 
 ```js
-import { transactionData } from "@proof.com/proof-vc-server";
+import {
+  encodeTransactionData,
+  transactionData,
+} from "@proof.com/proof-vc-server";
+
+const mandate = transactionData.wireInstructions({
+  recipient: {
+    institution_name: "Crestline Financial",
+    individual_name: "Acme Corp LLC",
+    routing_number: "055000123",
+    account_number: "7293",
+  },
+  source: {
+    institution_name: "Sterling & Union",
+    individual_name: "Sterling & Union",
+    routing_number: "091000456",
+    account_number: "4821",
+  },
+  amount: 5000,
+  currency: "USD",
+  memo: "Invoice #2024-089",
+});
+mandates.set(state, encodeTransactionData(mandate));
 
 const url = await proof.authorizationUrl({
   nonce,
   state,
   scope: "urn:proof:params:scope:verifiable-credentials:basic",
-  transactionData: transactionData.wireInstructions({
-    recipient: {
-      institution_name: "Crestline Financial",
-      individual_name: "Acme Corp LLC",
-      routing_number: "055000123",
-      account_number: "7293",
-    },
-    source: {
-      institution_name: "Sterling & Union",
-      individual_name: "Sterling & Union",
-      routing_number: "091000456",
-      account_number: "4821",
-    },
-    amount: 5000,
-    currency: "USD",
-    memo: "Invoice #2024-089",
-  }),
+  transactionData: mandate,
 });
 ```
 
-`proof`, `nonce` and `state` are the ones from the [Quickstart](#quickstart).
+`proof`, `nonce` and `state` are the ones from the [Quickstart](#quickstart). `mandates` is a store
+with the same lifetime as `nonces`.
 
 Mandate types:
 
@@ -173,15 +181,22 @@ Mandate types:
 
 #### Read the signed mandate
 
-After you verify the presentation, `getTransactionData` returns the mandate that the user signed:
+The SDK verifies the presentation. `getTransactionData` returns the mandate that Proof recorded and
+showed the user. `checkTransactionData` proves that the presentation is bound to the exact request
+that you sent: it compares the hash that the user signed with the hash of your own copy. Give it the
+mandate, or the string that `encodeTransactionData` returned.
 
 ```js
 import { TX_DATA_TYPE } from "@proof.com/proof-vc-server";
 
+credential.checkTransactionData(mandates.get(state));
+
 const wire = credential.getTransactionData(TX_DATA_TYPE.WIRE_INSTRUCTIONS);
 ```
 
-`credential` is the one from the [Quickstart](#quickstart).
+`credential` is the one from the [Quickstart](#quickstart). `mandates` holds the encoded mandate
+from [Request a signed mandate](#request-a-signed-mandate). `checkTransactionData` throws a
+`ProofVCError` with the code `verification_failed` when the user signed other terms.
 
 ### Secure the request
 
@@ -450,6 +465,7 @@ the `verifyVPToken` result.
 | `createClient`                   | Creates a client that builds authorization requests                            |
 | `createVerifier`                 | Creates a _Verifier_ with `verifyVPToken`, and `verify` for a single SD-JWT-VC |
 | `createClientIdMetadataDocument` | Builds a Client ID Metadata Document                                           |
+| `encodeTransactionData`          | Encodes a Signed Mandate as the request carries it; store it to check it later |
 | `enroll`                         | Creates a _Verifier_ account, as the `enroll` command does                     |
 | `agentsTrustListUrl`             | The redirect URI for x401 _Verifiers_                                          |
 
@@ -468,25 +484,26 @@ is a `ProofCredentialV1`, or a `DefaultProofCredential` when this SDK does not k
 A property is `undefined` when the user did not present that claim. All credentials have these
 methods:
 
-| Method                     | Returns                                                       |
-| -------------------------- | ------------------------------------------------------------- |
-| `getNonce()`               | The nonce that the user signed, or `undefined`                |
-| `getTransactionData(type)` | The Signed Mandate of that type, or `undefined`               |
-| `getClaims()`              | The presented claims, as issued                               |
-| `toJSON()`                 | The credential type, the format, the nonce and the properties |
-| `getSDJWT()`               | The decoded SD-JWT                                            |
+| Method                       | Returns                                                       |
+| ---------------------------- | ------------------------------------------------------------- |
+| `getNonce()`                 | The nonce that the user signed, or `undefined`                |
+| `getTransactionData(type)`   | The Signed Mandate of that type, or `undefined`               |
+| `checkTransactionData(sent)` | Nothing; throws when the presentation is not bound to `sent`  |
+| `getClaims()`                | The presented claims, as issued                               |
+| `toJSON()`                   | The credential type, the format, the nonce and the properties |
+| `getSDJWT()`                 | The decoded SD-JWT                                            |
 
 ## Errors
 
 The SDK throws `ProofVCError`. Its `code` tells you what failed:
 
-| `code`                       | Cause                                                                |
-| ---------------------------- | -------------------------------------------------------------------- |
-| `invalid_config`             | An option or a request parameter is missing or not valid             |
-| `invalid_input`              | The `vp_token` or the SD-JWT-VC is malformed                         |
-| `authorization_server_error` | Proof answered with an error; read `status`                          |
-| `verification_failed`        | The presentation did not pass verification                           |
-| `payment_required`           | Proof asks for payment for x401 signatures; pass a `fetch` that pays |
+| `code`                       | Cause                                                                                              |
+| ---------------------------- | -------------------------------------------------------------------------------------------------- |
+| `invalid_config`             | An option or a request parameter is missing or not valid                                           |
+| `invalid_input`              | The `vp_token` or the SD-JWT-VC is malformed                                                       |
+| `authorization_server_error` | Proof answered with an error; read `status`                                                        |
+| `verification_failed`        | The presentation did not pass verification, or it is not bound to the Signed Mandate that you sent |
+| `payment_required`           | Proof asks for payment for x401 signatures; pass a `fetch` that pays                               |
 
 ## Certificate authority
 

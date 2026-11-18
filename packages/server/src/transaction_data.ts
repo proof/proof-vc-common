@@ -199,6 +199,24 @@ function base64UrlEncode(s: string): string {
     .replace(/=+$/, "");
 }
 
+// The hash in `transaction_data_hashes` covers these exact bytes, so the same terms must always
+// encode to the same string. `JSON.stringify` follows key insertion order, which a Verifier loses
+// when it rebuilds its mandate from a database row or a queue message. Array order is content.
+function canonicalJson(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(canonicalJson);
+  }
+  if (value !== null && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    return Object.fromEntries(
+      Object.keys(record)
+        .sort()
+        .map((key) => [key, canonicalJson(record[key])]),
+    );
+  }
+  return value;
+}
+
 export function encodeTransactionData(data: TransactionData): string {
-  return base64UrlEncode(JSON.stringify(data));
+  return base64UrlEncode(JSON.stringify(canonicalJson(data)));
 }

@@ -7,6 +7,7 @@ import {
   ProofVCError,
   ProofCredentialV1,
   TX_DATA_TYPE,
+  transactionData,
 } from "../dist/index.js";
 
 const fixture = (name) =>
@@ -153,6 +154,30 @@ test("a sandbox ProofCredentialV1 passes signature, KB, sd_hash, chain, issuer a
   assert.equal(
     credential.getTransactionData(TX_DATA_TYPE.MPP_PAYMENT_CHALLENGE),
     undefined,
+  );
+});
+
+// The sandbox fixture predates `transaction_data_hashes`, so it covers the rejection path. Add a
+// fixture with hashes once sandbox emits them.
+test("checkTransactionData rejects a presentation that carries no hashes", async () => {
+  const credential = await withFixedTime(() =>
+    sandbox.verify({ encodedSDJWT: SANDBOX_VC, aud: SANDBOX_AUD }),
+  );
+  const mandate = transactionData.paymentItemized({
+    currency: "USD",
+    items: [{ quantity: 2, unit_cost: 40, label: "General Admission" }],
+  });
+
+  assert.throws(
+    () => credential.checkTransactionData(mandate),
+    (error) =>
+      error instanceof ProofVCError &&
+      error.code === "verification_failed" &&
+      error.message.includes("`transaction_data_hashes`"),
+  );
+  assert.deepEqual(
+    credential.getTransactionData(TX_DATA_TYPE.PAYMENT_ITEMIZED).currency,
+    "USD",
   );
 });
 

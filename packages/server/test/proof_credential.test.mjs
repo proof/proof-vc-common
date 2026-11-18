@@ -1,8 +1,21 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { PROOF_CREDENTIAL_V1_VCT, TX_DATA_TYPE } from "../dist/index.js";
+import { createHash } from "node:crypto";
+
+import {
+  PROOF_CREDENTIAL_V1_VCT,
+  ProofVCError,
+  TX_DATA_TYPE,
+  encodeTransactionData,
+  transactionData,
+} from "../dist/index.js";
 import { getProofCredential } from "../dist/proof_credential_factory.js";
+
+const sha256 = (encoded) =>
+  createHash("sha256").update(encoded, "utf8").digest("base64url");
+
+const MANDATE = transactionData.sessionData({ ip_address: "203.0.113.7" });
 
 const sdjwtWith = (claims) => ({ getClaims: async () => claims });
 
@@ -103,5 +116,42 @@ test("getTransactionData returns undefined without a KB-JWT", async () => {
   assert.equal(
     credential.getTransactionData(TX_DATA_TYPE.MPP_PAYMENT_CHALLENGE),
     undefined,
+  );
+});
+
+test("checkTransactionData passes when the KB-JWT carries the hash of the mandate sent", async () => {
+  const credential = await getProofCredential({
+    getClaims: async () => ({ vct: PROOF_CREDENTIAL_V1_VCT }),
+    kbJwt: {
+      payload: {
+        nonce: "n-1",
+        transaction_data_hashes: [sha256(encodeTransactionData(MANDATE))],
+        transaction_data_hashes_alg: "sha-256",
+      },
+    },
+  });
+
+  credential.checkTransactionData(MANDATE);
+  assert.throws(
+    () =>
+      credential.checkTransactionData(
+        transactionData.sessionData({ ip_address: "198.51.100.9" }),
+      ),
+    (error) =>
+      error instanceof ProofVCError && error.code === "verification_failed",
+  );
+});
+
+test("checkTransactionData throws without a KB-JWT", async () => {
+  const credential = await getProofCredential(
+    sdjwtWith({ vct: PROOF_CREDENTIAL_V1_VCT }),
+  );
+
+  assert.throws(
+    () => credential.checkTransactionData(MANDATE),
+    (error) =>
+      error instanceof ProofVCError &&
+      error.code === "verification_failed" &&
+      error.message.includes("`transaction_data_hashes`"),
   );
 });

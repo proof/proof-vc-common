@@ -6,6 +6,8 @@ import type {
   TransactionDataPayload,
   TransactionDataType,
 } from "./transaction_data.ts";
+import { assertTransactionData } from "./transaction_data_check.ts";
+import type { TransactionDataInput } from "./transaction_data_check.ts";
 
 export type { ProofCredential } from "./types.ts";
 
@@ -59,6 +61,11 @@ abstract class Credential implements ProofCredential {
       this.sdjwt.kbJwt?.payload;
     return payload?.[TX_DATA_CLAIM[type]] as
       TransactionDataPayload<T> | undefined;
+  }
+
+  public checkTransactionData(sent: TransactionDataInput): void {
+    const payload: Record<string, unknown> = this.sdjwt.kbJwt?.payload ?? {};
+    assertTransactionData(payload, sent);
   }
 
   public toJSON(): Record<string, unknown> {

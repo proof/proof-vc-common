@@ -4,9 +4,9 @@ import assert from "node:assert/strict";
 import {
   DEFAULT_CREDENTIAL_ID,
   TX_DATA_TYPE,
+  encodeTransactionData,
   transactionData,
 } from "../dist/index.js";
-import { encodeTransactionData } from "../dist/transaction_data.js";
 
 const decode = (encoded) =>
   JSON.parse(Buffer.from(encoded, "base64url").toString("utf8"));
@@ -49,4 +49,84 @@ test("mppPaymentChallenge omits an undefined expires", () => {
 
   assert.deepEqual(data.payload, MPP_CHALLENGE);
   assert.deepEqual(decode(encodeTransactionData(data)).payload, MPP_CHALLENGE);
+});
+
+const ITEMIZED = {
+  currency: "USD",
+  title: "Drive Shaft",
+  items: [
+    { quantity: 2, unit_cost: 40, label: "General Admission" },
+    { quantity: 2, unit_cost: 11.4, label: "Fees" },
+  ],
+};
+
+const MANDATES = [
+  transactionData.paymentItemized(ITEMIZED),
+  transactionData.sessionData({ ip_address: "203.0.113.7", device_id: "d-42" }),
+  transactionData.paymentMandate({
+    payment_instrument: { type: "card", id: "pi-1" },
+    payee: { name: "Acme Corp LLC" },
+    prompt_summary: "Pay Acme Corp LLC",
+    amount: 5000,
+    currency: "USD",
+  }),
+  transactionData.wireInstructions({
+    recipient: {
+      institution_name: "Crestline Financial",
+      routing_number: "055000123",
+      account_number: "7293",
+    },
+    source: {
+      individual_name: "Sterling & Union",
+      routing_number: "091000456",
+      account_number: "4821",
+    },
+    amount: 5000,
+    currency: "USD",
+  }),
+  transactionData.mppPaymentChallenge(MPP_CHALLENGE),
+];
+
+test("encode, decode and encode again gives the same string for each factory", () => {
+  for (const mandate of MANDATES) {
+    const encoded = encodeTransactionData(mandate);
+
+    assert.equal(encodeTransactionData(decode(encoded)), encoded);
+    assert.deepEqual(decode(encoded), mandate);
+  }
+});
+
+test("the same terms in a different key order encode to the same string", () => {
+  const sent = transactionData.paymentItemized(ITEMIZED);
+  const rebuilt = transactionData.paymentItemized({
+    items: ITEMIZED.items,
+    title: ITEMIZED.title,
+    currency: ITEMIZED.currency,
+  });
+
+  assert.equal(encodeTransactionData(rebuilt), encodeTransactionData(sent));
+  assert.equal(
+    encodeTransactionData({
+      payload: sent.payload,
+      credential_ids: sent.credential_ids,
+      type: sent.type,
+    }),
+    encodeTransactionData(sent),
+  );
+});
+
+test("array order is content and survives the encoding", () => {
+  const reversed = transactionData.paymentItemized({
+    ...ITEMIZED,
+    items: [...ITEMIZED.items].reverse(),
+  });
+
+  assert.notEqual(
+    encodeTransactionData(reversed),
+    encodeTransactionData(transactionData.paymentItemized(ITEMIZED)),
+  );
+  assert.deepEqual(
+    decode(encodeTransactionData(reversed)).payload.items,
+    [...ITEMIZED.items].reverse(),
+  );
 });

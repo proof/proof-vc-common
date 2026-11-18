@@ -8,6 +8,7 @@ import type {
   TransactionDataPayload,
   TransactionDataType,
 } from "./transaction_data.ts";
+import type { TransactionDataInput } from "./transaction_data_check.ts";
 
 export type TrustRoot = "development" | "production";
 
@@ -20,6 +21,7 @@ export interface ProofCredential {
   getTransactionData<T extends TransactionDataType>(
     type: T,
   ): TransactionDataPayload<T> | undefined;
+  checkTransactionData(sent: TransactionDataInput): void;
   toJSON(): Record<string, unknown>;
 }
 
