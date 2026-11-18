@@ -21,6 +21,7 @@ export interface ProofCredential {
   getTransactionData<T extends TransactionDataType>(
     type: T,
   ): TransactionDataPayload<T> | undefined;
+  isBoundToTransactionData(): boolean;
   checkTransactionData(sent: TransactionDataInput): void;
   toJSON(): Record<string, unknown>;
 }

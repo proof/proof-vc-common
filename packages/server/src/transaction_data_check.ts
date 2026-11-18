@@ -95,6 +95,16 @@ function hashesOf(kbPayload: Record<string, unknown>): readonly string[] {
 }
 
 /**
+ * Answers whether the key binding JWT binds the presentation to transaction data. A Verifier
+ * reads it to refuse a presentation bound to terms it did not send.
+ */
+export function hasTransactionDataHashes(
+  kbPayload: Record<string, unknown>,
+): boolean {
+  return kbPayload[HASHES_CLAIM] !== undefined;
+}
+
+/**
  * Proves that a presentation is bound to the transaction data that the Verifier sent. Compares
  * hashes only: the `type` of an entry is part of the hashed bytes.
  */

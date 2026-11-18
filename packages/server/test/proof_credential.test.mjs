@@ -155,3 +155,26 @@ test("checkTransactionData throws without a KB-JWT", async () => {
       error.message.includes("`transaction_data_hashes`"),
   );
 });
+
+test("isBoundToTransactionData reports the presence of the hashes claim", async () => {
+  const bound = await getProofCredential({
+    getClaims: async () => ({ vct: PROOF_CREDENTIAL_V1_VCT }),
+    kbJwt: {
+      payload: {
+        nonce: "n-1",
+        transaction_data_hashes: [sha256(encodeTransactionData(MANDATE))],
+      },
+    },
+  });
+  const unbound = await getProofCredential({
+    getClaims: async () => ({ vct: PROOF_CREDENTIAL_V1_VCT }),
+    kbJwt: { payload: { nonce: "n-1" } },
+  });
+  const noKbJwt = await getProofCredential(
+    sdjwtWith({ vct: PROOF_CREDENTIAL_V1_VCT }),
+  );
+
+  assert.equal(bound.isBoundToTransactionData(), true);
+  assert.equal(unbound.isBoundToTransactionData(), false);
+  assert.equal(noKbJwt.isBoundToTransactionData(), false);
+});

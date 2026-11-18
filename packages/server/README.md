@@ -198,6 +198,9 @@ const wire = credential.getTransactionData(TX_DATA_TYPE.WIRE_INSTRUCTIONS);
 from [Request a signed mandate](#request-a-signed-mandate). `checkTransactionData` throws a
 `ProofVCError` with the code `verification_failed` when the user signed other terms.
 
+A request that sends no mandate can still come back with a signed one. `isBoundToTransactionData`
+returns `true` in that case. Refuse the presentation, because you have no copy to check it against.
+
 ### Secure the request
 
 #### Use a pushed authorization request
@@ -488,6 +491,7 @@ methods:
 | ---------------------------- | ------------------------------------------------------------- |
 | `getNonce()`                 | The nonce that the user signed, or `undefined`                |
 | `getTransactionData(type)`   | The Signed Mandate of that type, or `undefined`               |
+| `isBoundToTransactionData()` | `true` when the user signed a Signed Mandate                  |
 | `checkTransactionData(sent)` | Nothing; throws when the presentation is not bound to `sent`  |
 | `getClaims()`                | The presented claims, as issued                               |
 | `toJSON()`                   | The credential type, the format, the nonce and the properties |
