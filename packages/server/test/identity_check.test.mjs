@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   decodeJwt,
   decodeProtectedHeader,
@@ -12,6 +13,58 @@ import { identityCheck, ProofVCError } from "../dist/index.js";
 const CLIENT_ID = "abc";
 const { privateKey } = await generateKeyPair("ES256", { extractable: true });
 const privateJwk = await exportJWK(privateKey);
+
+// A real sandbox presentation: see verify.test.mjs for its client ID, nonce and
+// the time when it is valid.
+const SANDBOX_VP_TOKEN = readFileSync(
+  new URL("./fixtures/sandbox-vp-token.txt", import.meta.url),
+  "utf8",
+).trim();
+const SANDBOX_CLIENT_ID = "caqnb6rwn";
+const SANDBOX_NONCE = "3f947e15-fcf0-4cd7-9030-61fde6632322";
+const SANDBOX_MS = (1790603873 + 60) * 1000;
+
+const RealDate = Date;
+async function atSandboxTime(fn) {
+  globalThis.Date = class extends RealDate {
+    constructor(...args) {
+      if (args.length > 0) {
+        super(...args);
+      } else {
+        super(SANDBOX_MS);
+      }
+    }
+    static now() {
+      return SANDBOX_MS;
+    }
+  };
+  try {
+    return await fn();
+  } finally {
+    globalThis.Date = RealDate;
+  }
+}
+
+// The sandbox presentation with its KB JWT marked as detached: the check has no
+// key to fetch the signatures, so verification fails with `invalid_config`.
+function detachedVPToken() {
+  const vc = JSON.parse(
+    Buffer.from(SANDBOX_VP_TOKEN, "base64url").toString("utf8"),
+  ).proof_id_default[0];
+  const parts = vc.split("~");
+  const kb = parts[parts.length - 1].split(".");
+  const header = JSON.parse(Buffer.from(kb[0], "base64url").toString());
+  const patched = {
+    ...header,
+    crit: ["proof.com#sig-1"],
+    "proof.com#sig-1": "record-123",
+  };
+  parts[parts.length - 1] =
+    `${Buffer.from(JSON.stringify(patched)).toString("base64url")}.${kb[1]}.`;
+  return Buffer.from(
+    JSON.stringify({ proof_id_default: [parts.join("~")] }),
+  ).toString("base64url");
+}
 
 function create(overrides = {}) {
   return identityCheck({
@@ -104,6 +157,33 @@ test("verify returns undefined for a declined, unknown or invalid presentation",
     undefined,
   );
   assert.equal(await check.verify(undefined, "n-1"), undefined);
+});
+
+test("verify returns the credential when its nonce matches", async () => {
+  const check = create({ clientId: SANDBOX_CLIENT_ID });
+  const credential = await atSandboxTime(() =>
+    check.verify({ vp_token: SANDBOX_VP_TOKEN, state: "42" }, SANDBOX_NONCE),
+  );
+  assert.equal(credential.getNonce(), SANDBOX_NONCE);
+  assert.equal(credential.givenName, "Alexander J");
+});
+
+test("verify returns undefined when the nonce does not match", async () => {
+  const check = create({ clientId: SANDBOX_CLIENT_ID });
+  const credential = await atSandboxTime(() =>
+    check.verify({ vp_token: SANDBOX_VP_TOKEN, state: "42" }, "n-other"),
+  );
+  assert.equal(credential, undefined);
+});
+
+test("verify rejects on an error that is not a rejected presentation", async () => {
+  const check = create({ clientId: SANDBOX_CLIENT_ID });
+  await assert.rejects(
+    atSandboxTime(() =>
+      check.verify({ vp_token: detachedVPToken(), state: "42" }, SANDBOX_NONCE),
+    ),
+    (error) => error instanceof ProofVCError && error.code === "invalid_config",
+  );
 });
 
 test("rejects requestUri or resultUrl that are not functions", () => {

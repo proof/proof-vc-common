@@ -304,7 +304,7 @@ app.use(express.urlencoded());
 app.get("/article", (req, res) => {
   const { id, nonce } = check.start();
   storage.set(id, { nonce });
-  res.send(check.page(id));
+  res.set("Cache-Control", "no-store").send(check.page(id));
 });
 
 app.get("/identity-check/requests/:id", async (req, res) => {
