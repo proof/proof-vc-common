@@ -1,4 +1,8 @@
-import { DEFAULT_CREDENTIAL_ID } from "@proof.com/proof-vc-common";
+import canonicalize from "canonicalize";
+import {
+  DEFAULT_CREDENTIAL_ID,
+  ProofVCError,
+} from "@proof.com/proof-vc-common";
 
 export const TX_DATA_TYPE = {
   WIRE_INSTRUCTIONS:
@@ -199,21 +203,13 @@ function base64UrlEncode(s: string): string {
     .replace(/=+$/, "");
 }
 
-function canonicalJson(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value.map(canonicalJson);
-  }
-  if (value !== null && typeof value === "object") {
-    const record = value as Record<string, unknown>;
-    return Object.fromEntries(
-      Object.keys(record)
-        .sort()
-        .map((key) => [key, canonicalJson(record[key])]),
+export function encodeTransactionData(data: TransactionData): string {
+  const json = canonicalize(data);
+  if (json === undefined) {
+    throw new ProofVCError(
+      "invalid_config",
+      "transaction data has no JSON representation",
     );
   }
-  return value;
-}
-
-export function encodeTransactionData(data: TransactionData): string {
-  return base64UrlEncode(JSON.stringify(canonicalJson(data)));
+  return base64UrlEncode(json);
 }
