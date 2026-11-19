@@ -8,9 +8,9 @@ import type {
 } from "./transaction_data.ts";
 import {
   assertTransactionData,
-  hasTransactionDataHashes,
+  HASHES_CLAIM,
+  type TransactionDataInput,
 } from "./transaction_data_check.ts";
-import type { TransactionDataInput } from "./transaction_data_check.ts";
 
 export type { ProofCredential } from "./types.ts";
 
@@ -67,12 +67,13 @@ abstract class Credential implements ProofCredential {
   }
 
   public isBoundToTransactionData(): boolean {
-    return hasTransactionDataHashes(this.sdjwt.kbJwt?.payload ?? {});
+    const payload: Record<string, unknown> | undefined =
+      this.sdjwt.kbJwt?.payload;
+    return payload?.[HASHES_CLAIM] !== undefined;
   }
 
   public checkTransactionData(sent: TransactionDataInput): void {
-    const payload: Record<string, unknown> = this.sdjwt.kbJwt?.payload ?? {};
-    assertTransactionData(payload, sent);
+    assertTransactionData(this.sdjwt.kbJwt?.payload ?? {}, sent);
   }
 
   public toJSON(): Record<string, unknown> {

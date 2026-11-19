@@ -2,35 +2,31 @@ import { hasher } from "@owf/crypto";
 import { base64url } from "@owf/identity-common";
 import { ProofVCError } from "@proof.com/proof-vc-common";
 
-import { encodeTransactionData } from "./transaction_data.ts";
-import type { TransactionData } from "./transaction_data.ts";
+import {
+  encodeTransactionData,
+  type TransactionData,
+} from "./transaction_data.ts";
 
 export type TransactionDataInput =
   TransactionData | string | readonly (TransactionData | string)[];
 
-const HASHES_CLAIM = "transaction_data_hashes";
+export const HASHES_CLAIM = "transaction_data_hashes";
 const HASHES_ALG_CLAIM = "transaction_data_hashes_alg";
-
 const DEFAULT_HASH_ALG = "sha-256";
-const SUPPORTED_HASH_ALGS: readonly string[] = [DEFAULT_HASH_ALG];
 
 function fail(message: string): never {
   throw new ProofVCError("verification_failed", message);
-}
-
-function assertSupportedHashAlg(alg: string): void {
-  if (!SUPPORTED_HASH_ALGS.includes(alg)) {
-    fail(
-      `\`${HASHES_ALG_CLAIM}\` is "${alg}", which this SDK does not support; expected "${DEFAULT_HASH_ALG}"`,
-    );
-  }
 }
 
 export function transactionDataHash(
   encoded: string,
   alg: string = DEFAULT_HASH_ALG,
 ): string {
-  assertSupportedHashAlg(alg);
+  if (alg !== DEFAULT_HASH_ALG) {
+    fail(
+      `\`${HASHES_ALG_CLAIM}\` is "${alg}", which this SDK does not support; expected "${DEFAULT_HASH_ALG}"`,
+    );
+  }
   return base64url.encode(hasher(encoded, alg));
 }
 
@@ -40,78 +36,45 @@ function isStringArray(value: unknown): value is readonly string[] {
   );
 }
 
-function isEntryList(
+export function assertTransactionData(
+  kbPayload: Record<string, unknown>,
   sent: TransactionDataInput,
-): sent is readonly (TransactionData | string)[] {
-  return Array.isArray(sent);
-}
-
-function entriesOf(
-  sent: TransactionDataInput,
-): readonly (TransactionData | string)[] {
-  const entries = isEntryList(sent) ? sent : [sent];
-  if (entries.length === 0) {
-    fail("no transaction data was supplied to check");
+): void {
+  const claimed = kbPayload[HASHES_CLAIM];
+  if (!isStringArray(claimed) || claimed.length === 0) {
+    fail(
+      `\`${HASHES_CLAIM}\` must be a non-empty array of strings; this presentation is bound to no transaction data`,
+    );
   }
-  return entries;
-}
 
-function hashAlgOf(kbPayload: Record<string, unknown>): string {
-  const alg = kbPayload[HASHES_ALG_CLAIM];
-  if (alg === undefined) {
-    return DEFAULT_HASH_ALG;
-  }
+  const alg = kbPayload[HASHES_ALG_CLAIM] ?? DEFAULT_HASH_ALG;
   if (typeof alg !== "string") {
     fail(
       `\`${HASHES_ALG_CLAIM}\` must be a string in the key binding JWT, not ${Array.isArray(alg) ? "an array" : typeof alg}`,
     );
   }
-  assertSupportedHashAlg(alg);
-  return alg;
-}
 
-function hashesOf(kbPayload: Record<string, unknown>): readonly string[] {
-  const hashes = kbPayload[HASHES_CLAIM];
-  if (hashes === undefined) {
-    fail(
-      `the key binding JWT has no \`${HASHES_CLAIM}\`, so the presentation is bound to no transaction data`,
-    );
+  const entries: readonly (TransactionData | string)[] = Array.isArray(sent)
+    ? sent
+    : [sent];
+  if (entries.length === 0) {
+    fail("no transaction data was supplied to check");
   }
-  if (!isStringArray(hashes) || hashes.length === 0) {
-    fail(`\`${HASHES_CLAIM}\` must be a non-empty array of strings`);
-  }
-  return hashes;
-}
-
-export function hasTransactionDataHashes(
-  kbPayload: Record<string, unknown>,
-): boolean {
-  return kbPayload[HASHES_CLAIM] !== undefined;
-}
-
-export function assertTransactionData(
-  kbPayload: Record<string, unknown>,
-  sent: TransactionDataInput,
-): void {
-  const claimed = hashesOf(kbPayload);
-  const alg = hashAlgOf(kbPayload);
-  const computed = entriesOf(sent).map((entry) =>
+  const computed = entries.map((entry) =>
     transactionDataHash(
       typeof entry === "string" ? entry : encodeTransactionData(entry),
       alg,
     ),
   );
 
-  const claimedSet = new Set(claimed);
-  const unbound = computed.filter((hash) => !claimedSet.has(hash));
+  const unbound = computed.filter((hash) => !claimed.includes(hash));
   if (unbound.length > 0) {
     fail(
       `the user signed other terms: ${unbound.length} of the ${computed.length} transaction data entries supplied are absent from \`${HASHES_CLAIM}\``,
     );
   }
 
-  const computedSet = new Set(computed);
-  const surplus = claimed.filter((hash) => !computedSet.has(hash));
+  const surplus = claimed.filter((hash) => !computed.includes(hash));
   if (surplus.length > 0) {
     fail(
       `the user signed more terms: ${surplus.length} of the ${claimed.length} hashes in \`${HASHES_CLAIM}\` match no transaction data supplied`,
