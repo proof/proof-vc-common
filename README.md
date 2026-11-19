@@ -128,16 +128,13 @@ shows the mandate to the user, and the user signs it with their Proof Digital ID
 
 #### Request a signed mandate
 
-Pass the mandate as `transactionData`. Store the encoded mandate with the nonce, to check it
-against the presentation later. Prefer a
+Pass the mandate as `transactionData`. Store the mandate with the nonce, to check it against the
+presentation later. Prefer a
 [pushed authorization request](#use-a-pushed-authorization-request), so that the mandate does not
 make the URL too long.
 
 ```js
-import {
-  encodeTransactionData,
-  transactionData,
-} from "@proof.com/proof-vc-server";
+import { transactionData } from "@proof.com/proof-vc-server";
 
 const mandate = transactionData.wireInstructions({
   recipient: {
@@ -156,7 +153,7 @@ const mandate = transactionData.wireInstructions({
   currency: "USD",
   memo: "Invoice #2024-089",
 });
-mandates.set(state, encodeTransactionData(mandate));
+mandates.set(state, mandate);
 
 const url = await proof.authorizationUrl({
   nonce,
@@ -183,8 +180,8 @@ Mandate types:
 
 The SDK verifies the presentation. `getTransactionData` returns the mandate that Proof recorded and
 showed the user. `checkTransactionData` proves that the presentation is bound to the exact request
-by comparing the hash that the user signed with the hash of your own copy. Give it the mandate, or
-the string that `encodeTransactionData` returned.
+by comparing the hash that the user signed with the hash of your own copy. Give it the mandate that
+you stored.
 
 ```js
 import { TX_DATA_TYPE } from "@proof.com/proof-vc-server";
@@ -194,9 +191,10 @@ credential.checkTransactionData(mandates.get(state));
 const wire = credential.getTransactionData(TX_DATA_TYPE.WIRE_INSTRUCTIONS);
 ```
 
-`credential` is the one from the [Quickstart](#quickstart). `mandates` holds the encoded mandate
-from [Request a signed mandate](#request-a-signed-mandate). `checkTransactionData` throws a
-`ProofVCError` with the code `verification_failed` when the user signed other terms.
+`credential` is the one from the [Quickstart](#quickstart). `mandates` holds the mandate from
+[Request a signed mandate](#request-a-signed-mandate). `checkTransactionData` throws a
+`ProofVCError` with the code `verification_failed` when the user signed other terms. It throws the
+same error when you supply no mandate.
 
 A request that sends no mandate can still come back with a signed one. Use
 `isBoundToTransactionData` to find these presentations. Refuse them, because you have no copy to
@@ -464,14 +462,14 @@ the `verifyVPToken` result.
 | `privateKeyFactory` | Your ES256 private key; required for [x401 presentations](#protect-an-endpoint) |
 | `timeout`, `fetch`  | As in `createClient`                                                            |
 
-| Function                         | Description                                                                    |
-| -------------------------------- | ------------------------------------------------------------------------------ |
-| `createClient`                   | Creates a client that builds authorization requests                            |
-| `createVerifier`                 | Creates a _Verifier_ with `verifyVPToken`, and `verify` for a single SD-JWT-VC |
-| `createClientIdMetadataDocument` | Builds a Client ID Metadata Document                                           |
-| `encodeTransactionData`          | Encodes a Signed Mandate as the request carries it; store it to check it later |
-| `enroll`                         | Creates a _Verifier_ account, as the `enroll` command does                     |
-| `agentsTrustListUrl`             | The redirect URI for x401 _Verifiers_                                          |
+| Function                         | Description                                                                                   |
+| -------------------------------- | --------------------------------------------------------------------------------------------- |
+| `createClient`                   | Creates a client that builds authorization requests                                           |
+| `createVerifier`                 | Creates a _Verifier_ with `verifyVPToken`, and `verify` for a single SD-JWT-VC                |
+| `createClientIdMetadataDocument` | Builds a Client ID Metadata Document                                                          |
+| `encodeTransactionData`          | Encodes a Signed Mandate as the request carries it; `checkTransactionData` accepts the result |
+| `enroll`                         | Creates a _Verifier_ account, as the `enroll` command does                                    |
+| `agentsTrustListUrl`             | The redirect URI for x401 _Verifiers_                                                         |
 
 ## Credentials
 

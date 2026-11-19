@@ -27,7 +27,6 @@ export {
   transactionData,
   encodeTransactionData,
 } from "./transaction_data.ts";
-export type { TransactionDataInput } from "./transaction_data_check.ts";
 
 export type {
   ServerClientConfig,

@@ -57,7 +57,10 @@ export function assertTransactionData(
   const entries: readonly (TransactionData | string)[] = Array.isArray(sent)
     ? sent
     : [sent];
-  if (entries.length === 0) {
+  if (
+    entries.length === 0 ||
+    entries.some((entry) => entry === undefined || entry === null)
+  ) {
     fail("no transaction data was supplied to check");
   }
   const computed = entries.map((entry) =>

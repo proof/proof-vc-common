@@ -263,3 +263,13 @@ test("no transaction data supplied fails", () => {
 
   rejects(kbWith([sha256(encoded)]), [], "no transaction data was supplied");
 });
+
+test("a store miss fails as nothing supplied, not as other terms", () => {
+  const kb = kbWith([
+    sha256(encodeTransactionData(transactionData.sessionData(SESSION))),
+  ]);
+
+  rejects(kb, undefined, "no transaction data was supplied");
+  rejects(kb, null, "no transaction data was supplied");
+  rejects(kb, [undefined], "no transaction data was supplied");
+});
