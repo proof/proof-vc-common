@@ -5,20 +5,12 @@ import { ProofVCError } from "@proof.com/proof-vc-common";
 import { encodeTransactionData } from "./transaction_data.ts";
 import type { TransactionData } from "./transaction_data.ts";
 
-/**
- * What the Verifier sent in the `transaction_data` request parameter: a mandate from a
- * `transactionData` factory, the string that `encodeTransactionData` returned, or several of
- * either.
- */
 export type TransactionDataInput =
   TransactionData | string | readonly (TransactionData | string)[];
 
 const HASHES_CLAIM = "transaction_data_hashes";
 const HASHES_ALG_CLAIM = "transaction_data_hashes_alg";
 
-// OID4VP 1.0 App. B.3.3.1: `sha-256` is the default and every implementation must support it.
-// Proof hashes with `sha-256` only. `hasher` computes `sha-512` without complaint, so the
-// allowlist is written here rather than inherited.
 const DEFAULT_HASH_ALG = "sha-256";
 const SUPPORTED_HASH_ALGS: readonly string[] = [DEFAULT_HASH_ALG];
 
@@ -34,7 +26,6 @@ function assertSupportedHashAlg(alg: string): void {
   }
 }
 
-/** Hashes an encoded transaction data entry as OID4VP 1.0 App. B.3.3.1 defines it. */
 export function transactionDataHash(
   encoded: string,
   alg: string = DEFAULT_HASH_ALG,
@@ -65,8 +56,6 @@ function entriesOf(
   return entries;
 }
 
-// OID4VP 1.0 App. B.3.3.1-2.2.2.2: in the Key Binding JWT this claim is a String, the one
-// algorithm the wallet used. The array form belongs to the request.
 function hashAlgOf(kbPayload: Record<string, unknown>): string {
   const alg = kbPayload[HASHES_ALG_CLAIM];
   if (alg === undefined) {
@@ -94,20 +83,12 @@ function hashesOf(kbPayload: Record<string, unknown>): readonly string[] {
   return hashes;
 }
 
-/**
- * Answers whether the key binding JWT binds the presentation to transaction data. A Verifier
- * reads it to refuse a presentation bound to terms it did not send.
- */
 export function hasTransactionDataHashes(
   kbPayload: Record<string, unknown>,
 ): boolean {
   return kbPayload[HASHES_CLAIM] !== undefined;
 }
 
-/**
- * Proves that a presentation is bound to the transaction data that the Verifier sent. Compares
- * hashes only: the `type` of an entry is part of the hashed bytes.
- */
 export function assertTransactionData(
   kbPayload: Record<string, unknown>,
   sent: TransactionDataInput,

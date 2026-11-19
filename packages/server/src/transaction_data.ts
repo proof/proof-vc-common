@@ -199,9 +199,6 @@ function base64UrlEncode(s: string): string {
     .replace(/=+$/, "");
 }
 
-// The hash in `transaction_data_hashes` covers these exact bytes, so the same terms must always
-// encode to the same string. `JSON.stringify` follows key insertion order, which a Verifier loses
-// when it rebuilds its mandate from a database row or a queue message. Array order is content.
 function canonicalJson(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value.map(canonicalJson);
