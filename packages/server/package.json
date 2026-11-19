@@ -48,7 +48,6 @@
     "@proof.com/proof-vc-common": "0.7.1",
     "@sd-jwt/core": "^0.24.3",
     "@sd-jwt/sd-jwt-vc": "^0.24.3",
-    "canonicalize": "5.1.0",
     "jose": "^6.2.15"
   },
   "devDependencies": {

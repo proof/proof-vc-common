@@ -183,10 +183,8 @@ Mandate types:
 
 The SDK verifies the presentation. `getTransactionData` returns the mandate that Proof recorded and
 showed the user. `checkTransactionData` proves that the presentation is bound to the exact request
-that you sent: it compares the hash that the user signed with the hash of your own copy. Give it the
-mandate, or the string that `encodeTransactionData` returned. `encodeTransactionData` writes
-[RFC 8785](https://www.rfc-editor.org/rfc/rfc8785) canonical JSON, so the same terms always give the
-same string, whatever order your copy holds the fields in.
+by comparing the hash that the user signed with the hash of your own copy. Give it the mandate, or
+the string that `encodeTransactionData` returned.
 
 ```js
 import { TX_DATA_TYPE } from "@proof.com/proof-vc-server";
@@ -200,8 +198,9 @@ const wire = credential.getTransactionData(TX_DATA_TYPE.WIRE_INSTRUCTIONS);
 from [Request a signed mandate](#request-a-signed-mandate). `checkTransactionData` throws a
 `ProofVCError` with the code `verification_failed` when the user signed other terms.
 
-A request that sends no mandate can still come back with a signed one. `isBoundToTransactionData`
-returns `true` in that case. Refuse the presentation, because you have no copy to check it against.
+A request that sends no mandate can still come back with a signed one. Use
+`isBoundToTransactionData` to find these presentations. Refuse them, because you have no copy to
+check them against.
 
 ### Secure the request
 
@@ -470,7 +469,7 @@ the `verifyVPToken` result.
 | `createClient`                   | Creates a client that builds authorization requests                            |
 | `createVerifier`                 | Creates a _Verifier_ with `verifyVPToken`, and `verify` for a single SD-JWT-VC |
 | `createClientIdMetadataDocument` | Builds a Client ID Metadata Document                                           |
-| `encodeTransactionData`          | Encodes a Signed Mandate as the request carries it, as RFC 8785 canonical JSON |
+| `encodeTransactionData`          | Encodes a Signed Mandate as the request carries it; store it to check it later |
 | `enroll`                         | Creates a _Verifier_ account, as the `enroll` command does                     |
 | `agentsTrustListUrl`             | The redirect URI for x401 _Verifiers_                                          |
 

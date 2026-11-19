@@ -269,7 +269,6 @@ __metadata:
     "@proof.com/proof-vc-common": "npm:0.7.1"
     "@sd-jwt/core": "npm:^0.24.3"
     "@sd-jwt/sd-jwt-vc": "npm:^0.24.3"
-    canonicalize: "npm:5.1.0"
     jose: "npm:^6.2.15"
     publint: "npm:^0.3.25"
     typescript: "npm:^6.0.3"
@@ -536,15 +535,6 @@ __metadata:
     keyv: "npm:^5.6.0"
     qified: "npm:^0.10.1"
   checksum: 10c0/ad4086a60ed327196901c16360312705e35bfde5118457449cfabaf4ece0fecad046985ea8b66b3ece46dd469cb33798d87e1dac3ed2c00746578054bccbf74d
-  languageName: node
-  linkType: hard
-
-"canonicalize@npm:5.1.0":
-  version: 5.1.0
-  resolution: "canonicalize@npm:5.1.0"
-  bin:
-    canonicalize: bin/canonicalize.js
-  checksum: 10c0/ff9212420e3563b35c129ac03c1b159678ab82520e29876b5fbbf8a26e44e2d874abed276930376294cbfcd8ed4efed5c2fbd55daeb1f109991bb8cc441b3770
   languageName: node
   linkType: hard
 

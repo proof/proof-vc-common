@@ -9,7 +9,7 @@ A Yarn 4 monorepo publishing two ESM TypeScript packages:
 
 ## Hard Rules
 
-1. **`packages/common` must stay pure.** No `node:*`, `@sd-jwt/*`, `@owf/*`, `canonicalize`, or other runtime imports from anything reachable from `packages/common/src/index.ts` or `packages/common/src/internal.ts`. Type-only imports (`import type` / `export type *`) are safe — `verbatimModuleSyntax: true` erases them. Verify after build (see Package Boundaries).
+1. **`packages/common` must stay pure.** No `node:*`, `@sd-jwt/*`, `@owf/*`, or other runtime imports from anything reachable from `packages/common/src/index.ts` or `packages/common/src/internal.ts`. Type-only imports (`import type` / `export type *`) are safe — `verbatimModuleSyntax: true` erases them. Verify after build (see Package Boundaries).
 2. **Prompt before publishing.** Never bump version, push tags, create a Release, or trigger the publish workflow without explicit confirmation. Publishes are permanent.
 3. **Run `yarn check-all` before any commit or push.** Composes format, lint, typecheck, publint.
 4. **Keep `yarn publint` on `--pack npm`.** `--pack auto` picks yarn-1 mode and reports false-positive errors.
@@ -31,12 +31,12 @@ Versioning is **lockstep**: both packages always share one version, published to
 - `index.ts` — `export * from "@proof.com/proof-vc-common"` then the server surface (its `createClient` intentionally shadows the frontend one)
 - `client.ts` — server `createClient` (PAR, `transactionData`, RFC 9101 JAR signing via `jose`: `authorizationUrl` by value, `signedAuthorizationRequest` + `jarByReferenceAuthorizationUrl` by reference, `signedDcApiRequest`); `authorizationUrl` is `async` (PAR fetches + JAR signing). Secured requests need `useSecuredAuthorizationRequest: true` and a `privateKeyFactory` (ES256 JWK); `aud` is the AS `issuer` fetched from `AS_METADATA_URL`
 - `verifier.ts` — `createVerifier` → `verify` / `verifyVPToken`
-- `transaction_data.ts` (`encodeTransactionData`, RFC 8785 canonical JSON via `canonicalize`), `transaction_data_check.ts` (`checkTransactionData` / `assertTransactionData`), `proof_credentials.ts`, `proof_credential_factory.ts`, `utils.ts`, `types.ts` (`ProofCredential`/`VPToken`/`TrustRoot`), `certificates/**`
+- `transaction_data.ts`, `transaction_data_check.ts` (`checkTransactionData` / `assertTransactionData`), `proof_credentials.ts`, `proof_credential_factory.ts`, `utils.ts`, `types.ts` (`ProofCredential`/`VPToken`/`TrustRoot`), `certificates/**`
 
 Verify `common` stays free of runtime leaks after build:
 
 ```bash
-grep -lE '(jose|@sd-jwt|@owf|canonicalize|node:)' packages/common/dist/*.js
+grep -lE '(jose|@sd-jwt|@owf|node:)' packages/common/dist/*.js
 # Must match nothing.
 ```
 
