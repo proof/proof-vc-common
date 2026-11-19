@@ -6,8 +6,13 @@ Your server sends the user to Proof with an
 [OpenID for Verifiable Presentations](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html)
 (OID4VP) authorization request. The user presents their Proof Digital ID. Proof sends the
 presentation (`vp_token`) to your server, which verifies it and reads the claims. To have the user
-sign an action, such as a payment, add a [Signed Mandate](#signed-mandates) to the request. With
-[x401](#x401), AI agents present the user's Proof Digital ID to your HTTP endpoints.
+sign an action, such as a payment, add a [Signed Mandate](#signed-mandates) to the request.
+
+AI agents can also present the user's Proof Digital ID:
+
+- [Agentic Identity Verification](#agentic-identity-verification) puts any web page or endpoint
+  behind an identity check that AI agents perform natively.
+- [x401](#x401) lets AI agents present the Proof Digital ID to your HTTP endpoints.
 
 To request Proof Digital IDs on your website in a one-click button, use
 [proof-vc-web](https://github.com/proof/proof-vc-web).
@@ -21,6 +26,7 @@ To request Proof Digital IDs on your website in a one-click button, use
   - [Secure the request](#secure-the-request)
     - [Use a pushed authorization request](#use-a-pushed-authorization-request)
     - [Sign the request](#sign-the-request)
+  - [Agentic Identity Verification](#agentic-identity-verification)
   - [x401](#x401)
     - [Enroll an x401 _Verifier_](#enroll-an-x401-verifier)
     - [Protect an endpoint](#protect-an-endpoint)
@@ -65,7 +71,7 @@ const verifier = createVerifier({ environment: "sandbox" });
 const nonces = new Map(); // Use your database in production.
 
 const app = express();
-app.use(express.urlencoded({ extended: false }));
+app.use(express.urlencoded());
 ```
 
 When the user starts the checkout, send them to Proof with a new `nonce` and a new `state`:
@@ -261,6 +267,72 @@ const url = proof.jarByReferenceAuthorizationUrl({
 });
 ```
 
+### Agentic Identity Verification
+
+With Agentic Identity Verification, your web page or endpoint asks for the user's Proof Digital ID
+before it shows its content. AI agents complete the identity check with two links, presentation then
+retrieval. The Agentic Identity Verification page works natively across the entire AI ecosystem.
+
+1. An AI agent calls your page or endpoint. It answers `200` with a verification page.
+2. The agent opens the identity link of the page to start the identity check with Proof.
+3. The user presents their Proof Digital ID. Proof sends the presentation to your server.
+4. The agent opens the result link of the page to get your content.
+
+`identityCheck` creates the verification page and the signed request, and verifies the presentation.
+You store the checks.
+
+```js
+import express from "express";
+import { identityCheck } from "@proof.com/proof-vc-server";
+
+const check = identityCheck({
+  environment: "sandbox",
+  clientId: "<CLIENT_ID>",
+  privateKeyFactory: () => privateKey,
+  scope: "urn:proof:params:scope:verifiable-credentials:basic",
+  callbackUri: "https://example.com/identity-check/callback",
+  requestUri: (id) => `https://example.com/identity-check/requests/${id}`,
+  resultUrl: (id) => `https://example.com/article/${id}`,
+  verifierName: "example.com",
+  description: "A full article about a medical study",
+});
+const storage = new Map(); // Use your database in production.
+
+const app = express();
+app.use(express.urlencoded());
+
+app.get("/article", (req, res) => {
+  const { id, nonce } = check.start();
+  storage.set(id, { nonce });
+  res.set("Cache-Control", "no-store").send(check.page(id));
+});
+
+app.get("/identity-check/requests/:id", async (req, res) => {
+  const pending = storage.get(req.params.id);
+  if (!pending) {
+    return res.sendStatus(404);
+  }
+  const jwt = await check.request(req.params.id, pending.nonce);
+  res.type(check.requestContentType).send(jwt);
+});
+
+app.post("/identity-check/callback", async (req, res) => {
+  const pending = storage.get(req.body.state);
+  const credential = await check.verify(req.body, pending?.nonce);
+  if (pending && credential) {
+    pending.credential ??= credential;
+  }
+  res.json({});
+});
+
+app.get("/article/:id", (req, res) => {
+  if (!storage.get(req.params.id)?.credential) {
+    return res.set("Cache-Control", "no-store").send(check.page(req.params.id));
+  }
+  res.send("The full article");
+});
+```
+
 ### x401
 
 With [x401](https://x401.proof.com/spec/latest/), your HTTP endpoint answers `401` with a proof
@@ -436,6 +508,31 @@ the `verifyVPToken` result.
 | `state`           | no       | A value that Proof sends back with the presentation                            |
 | `loginHint`       | with PAR | The user's email, pre-filled on Proof                                          |
 
+`identityCheck` options:
+
+| Option              | Description                                                                    |
+| ------------------- | ------------------------------------------------------------------------------ |
+| `environment`       | `"sandbox"` or `"production"`                                                  |
+| `clientId`          | Your Proof client ID                                                           |
+| `privateKeyFactory` | Returns your ES256 private key; its public key is on your client               |
+| `scope`             | The claims to request; see [Request specific claims](#request-specific-claims) |
+| `callbackUri`       | Where Proof sends the presentation; one of your client's redirect URIs         |
+| `requestUri`        | `(id) => URL` of the route that serves the signed request                      |
+| `resultUrl`         | `(id) => URL` of the route that returns the content                            |
+| `verifierName`      | Your domain name or your name, shown as the requester on the page              |
+| `description`       | What the protected content is, shown on the page                               |
+| `timeout`, `fetch`  | As in `createClient`                                                           |
+
+`identityCheck` returns:
+
+| Member                | Description                                                                          |
+| --------------------- | ------------------------------------------------------------------------------------ |
+| `start()`             | A new `{ id, nonce }` (random UUIDs); store both                                     |
+| `page(id)`            | The verification page (HTML)                                                         |
+| `request(id, nonce)`  | The signed request, with `state` set to `id`                                         |
+| `requestContentType`  | `application/oauth-authz-req+jwt`                                                    |
+| `verify(body, nonce)` | The credential, or `undefined` when the user declined or the presentation is invalid |
+
 `createVerifier` options:
 
 | Option              | Description                                                                     |
@@ -445,13 +542,14 @@ the `verifyVPToken` result.
 | `privateKeyFactory` | Your ES256 private key; required for [x401 presentations](#protect-an-endpoint) |
 | `timeout`, `fetch`  | As in `createClient`                                                            |
 
-| Function                         | Description                                                                    |
-| -------------------------------- | ------------------------------------------------------------------------------ |
-| `createClient`                   | Creates a client that builds authorization requests                            |
-| `createVerifier`                 | Creates a _Verifier_ with `verifyVPToken`, and `verify` for a single SD-JWT-VC |
-| `createClientIdMetadataDocument` | Builds a Client ID Metadata Document                                           |
-| `enroll`                         | Creates a _Verifier_ account, as the `enroll` command does                     |
-| `agentsTrustListUrl`             | The redirect URI for x401 _Verifiers_                                          |
+| Function                         | Description                                                                          |
+| -------------------------------- | ------------------------------------------------------------------------------------ |
+| `createClient`                   | Creates a client that builds authorization requests                                  |
+| `createVerifier`                 | Creates a _Verifier_ with `verifyVPToken`, and `verify` for a single SD-JWT-VC       |
+| `createClientIdMetadataDocument` | Builds a Client ID Metadata Document                                                 |
+| `enroll`                         | Creates a _Verifier_ account, as the `enroll` command does                           |
+| `agentsTrustListUrl`             | The redirect URI for x401 _Verifiers_                                                |
+| `identityCheck`                  | Protects a page with [Agentic Identity Verification](#agentic-identity-verification) |
 
 ## Credentials
 

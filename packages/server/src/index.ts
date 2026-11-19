@@ -56,6 +56,13 @@ export type {
 export { enroll, EnrollmentError, ENROLLMENT_PATH } from "./enroll.ts";
 
 export type {
+  IdentityCheckConfig,
+  IdentityCheckStart,
+  IdentityCheck,
+} from "./identity_check.ts";
+export { identityCheck } from "./identity_check.ts";
+
+export type {
   VerifierConfig,
   VerifyParams,
   VerifyVPTokenParams,
