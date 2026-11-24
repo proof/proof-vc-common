@@ -37,7 +37,7 @@ export type WireInstructionsPayload = {
     routing_number: string;
     institution_name?: string;
   };
-  amount: number;
+  amount: string;
   currency: string;
   memo?: string;
 };
@@ -54,13 +54,13 @@ export type PaymentMandatePayload = {
     website?: string;
   };
   prompt_summary: string;
-  amount: number;
+  amount: string;
   currency: string;
 };
 
 export type PaymentItemizedItem = {
   quantity: number;
-  unit_cost: number;
+  unit_cost: string;
   label: string;
 };
 
