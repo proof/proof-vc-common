@@ -158,7 +158,7 @@ const url = await proof.authorizationUrl({
       routing_number: "091000456",
       account_number: "4821",
     },
-    amount: 5000,
+    amount: "5000.00",
     currency: "USD",
     memo: "Invoice #2024-089",
   }),
@@ -166,6 +166,9 @@ const url = await proof.authorizationUrl({
 ```
 
 `proof`, `nonce` and `state` are the ones from the [Quickstart](#quickstart).
+
+`amount` in `wireInstructions` and `paymentMandate`, and `unit_cost` in `paymentItemized`, take
+decimal text such as `"5000.00"`. Proof signs and shows the text you send. `quantity` is a number.
 
 Mandate types:
 
