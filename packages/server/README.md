@@ -167,9 +167,9 @@ const url = await proof.authorizationUrl({
 
 `proof`, `nonce` and `state` are the ones from the [Quickstart](#quickstart).
 
-Amounts travel as text, and Proof signs and shows the text that you send. `amount` in
-`wireInstructions` and `paymentMandate`, and `unit_cost` in `paymentItemized`, take decimal text,
-such as `"5000.00"` or `"-25.00"`. `paymentItemized` takes `quantity` as a number.
+`amount` in `wireInstructions` and `paymentMandate`, and `unit_cost` in `paymentItemized`, take
+decimal text such as `"5000.00"`. Proof signs and shows the text you send. `quantity` stays a
+number.
 
 Mandate types:
 
