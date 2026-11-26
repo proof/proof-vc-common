@@ -43,12 +43,12 @@
     "test": "tsc -b && node --test test/*.test.mjs"
   },
   "dependencies": {
-    "@owf/crypto": "^0.7.0",
-    "@owf/identity-common": "^0.7.0",
+    "@owf/crypto": "^0.8.0",
+    "@owf/identity-common": "^0.8.0",
     "@proof.com/proof-vc-common": "0.7.1",
-    "@sd-jwt/core": "^0.24.3",
-    "@sd-jwt/sd-jwt-vc": "^0.24.3",
-    "jose": "^6.2.17"
+    "@sd-jwt/core": "^0.25.0",
+    "@sd-jwt/sd-jwt-vc": "^0.25.0",
+    "jose": "^6.2.18"
   },
   "devDependencies": {
     "publint": "^0.3.25",
